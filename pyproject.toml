@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "wrlc-alma-item-update-webhook"
+name = "wrlc-alma-item-checks"
 version = "0.1.0"
 description = "Perform checks on any item update in Alma"
 authors = [
