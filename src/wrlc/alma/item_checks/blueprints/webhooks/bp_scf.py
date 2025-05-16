@@ -1,0 +1,42 @@
+"""Blueprint for Alma Item Update Webhook."""
+import logging
+# noinspection PyPackageRequirements
+import azure.functions as func
+# noinspection PyPackageRequirements
+from azure.functions import Blueprint
+from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
+# noinspection PyPackageRequirements
+from wrlc.alma.api_client.models.item import Item
+
+bp = Blueprint()
+
+
+@bp.route('scfwebhook', methods=['POST'])
+def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Webhook endpoint for handling SCF IZ Item Update events.
+
+    Args:
+        req (func.HttpRequest): The incoming HTTP request.
+
+    Returns:
+        func.HttpResponse: The HTTP response.
+    """
+    # ----- Parse Item ----- #
+    try:
+        item: Item = Item(**req.get_json())  # Parse incoming JSON into Item
+
+    except ValueError as e:  # Catch JSON decoding errors specifically
+        logging.error(f"Error processing JSON request: {e}")
+        return func.HttpResponse("Invalid JSON format", status_code=400)
+    except Exception as e:
+        logging.error(f"Unexpected error processing request: {e}", exc_info=True)  # Log traceback
+        return func.HttpResponse("Error processing request", status_code=500)
+
+    # ----- No X in barcode ----- #
+    scf_no_x: SCFNoX = SCFNoX(item)  # Create SCFNoX instance from item
+
+    if isinstance(scf_no_x.should_process(), Item):  # Check if SCFNoX should be processed
+        scf_no_x.process(scf_no_x.should_process())  # If so, process it
+
+    return func.HttpResponse("Webhook received", status_code=200)  # Return 200 OK
