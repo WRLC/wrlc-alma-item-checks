@@ -4,11 +4,11 @@ from typing import List
 from sqlalchemy.orm import Session
 from src.wrlc.alma.item_checks.api.dependencies import get_db
 from src.wrlc.alma.item_checks.api.models.check import Check, CheckCreate, CheckUpdate
+from src.wrlc.alma.item_checks.api.models.notification import Notification, NotificationCreate, NotificationUpdate
 from src.wrlc.alma.item_checks.api.models.user import User, UserCreate, UserUpdate
 from src.wrlc.alma.item_checks.repositories.check_repo import CheckRepository
+from src.wrlc.alma.item_checks.repositories.notification_repo import NotificationRepository
 from src.wrlc.alma.item_checks.repositories.user_repo import UserRepository
-from wrlc.alma.item_checks.api.models.notification import Notification
-from wrlc.alma.item_checks.repositories.notification_repo import NotificationRepository
 
 # noinspection PyArgumentEqualDefault
 crud_api_app = FastAPI(
@@ -243,7 +243,7 @@ async def delete_user(
 # NOTIFICATION API
 @crud_api_app.post("/notifications/", response_model=Notification, status_code=201)
 async def create_notification(
-    notification_in: Notification,
+    notification_in: NotificationCreate,
     db: Session = Depends(get_db)
 ) -> Notification:
     """
@@ -309,7 +309,7 @@ async def read_notification(
 @crud_api_app.put("/notifications/{notification_id}", response_model=Notification)
 async def update_notification(
     notification_id: int,
-    notification_in: Notification,
+    notification_in: NotificationUpdate,
     db: Session = Depends(get_db)
 ) -> Notification:
     """

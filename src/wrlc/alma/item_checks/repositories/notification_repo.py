@@ -5,7 +5,8 @@ from sqlalchemy import Select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from src.wrlc.alma.item_checks.models.notification import Notification as SQLAlchemyNotification
-from src.wrlc.alma.item_checks.api.models.notification import Notification as PydanticNotification
+from src.wrlc.alma.item_checks.api.models.notification import NotificationCreate as PydanticNotificationCreate
+from src.wrlc.alma.item_checks.api.models.notification import NotificationUpdate as PydanticNotificationUpdate
 
 
 # noinspection PyMethodMayBeStatic
@@ -15,12 +16,12 @@ class NotificationRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_notification(self, notification_data: PydanticNotification) -> SQLAlchemyNotification:
+    def create_notification(self, notification_data: PydanticNotificationCreate) -> SQLAlchemyNotification:
         """
         Create a new notification.
 
         Args:
-            notification_data (PydanticNotification): The notification data to create.
+            notification_data (PydanticNotificationCreate): The notification data to create.
 
         Returns:
             SQLAlchemyNotification: The created notification.
@@ -88,14 +89,14 @@ class NotificationRepository:
             raise
 
     def update_notification(
-            self, notification_id: int, notification_data: PydanticNotification
+            self, notification_id: int, notification_data: PydanticNotificationUpdate
     ) -> SQLAlchemyNotification:
         """
         Update a notification.
 
         Args:
             notification_id (int): The ID of the notification to update.
-            notification_data (PydanticNotification): The notification data to update
+            notification_data (PydanticNotificationUpdate): The notification data to update
 
         Returns:
             SQLAlchemyNotification: The updated notification.
