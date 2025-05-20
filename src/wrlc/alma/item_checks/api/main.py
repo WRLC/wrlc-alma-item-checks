@@ -7,6 +7,8 @@ from src.wrlc.alma.item_checks.api.models.check import Check, CheckCreate, Check
 from src.wrlc.alma.item_checks.api.models.user import User, UserCreate, UserUpdate
 from src.wrlc.alma.item_checks.repositories.check_repo import CheckRepository
 from src.wrlc.alma.item_checks.repositories.user_repo import UserRepository
+from wrlc.alma.item_checks.api.models.notification import Notification
+from wrlc.alma.item_checks.repositories.notification_repo import NotificationRepository
 
 # noinspection PyArgumentEqualDefault
 crud_api_app = FastAPI(
@@ -236,6 +238,118 @@ async def delete_user(
     user_repo = UserRepository(db)
     db_user = user_repo.delete_user(user_id=user_id)
     return db_user
+
+
+# NOTIFICATION API
+@crud_api_app.post("/notifications/", response_model=Notification, status_code=201)
+async def create_notification(
+    notification_in: Notification,
+    db: Session = Depends(get_db)
+) -> Notification:
+    """
+    Create a new notification.
+
+    Args:
+        notification_in (Notification): the notification to create
+        db (Session): the database session
+
+    Returns:
+        Notification: the created notification
+
+    """
+    notification_repo = NotificationRepository(db)
+    db_notification = notification_repo.create_notification(notification_data=notification_in)
+    return db_notification
+
+
+@crud_api_app.get("/notifications/", response_model=List[Notification])
+async def read_notifications(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+) -> List[Notification]:
+    """
+    Read all notifications.
+
+    Args:
+        skip (int): the number of notifications to skip
+        limit (int): the number of notifications to limit
+        db (Session): the database session
+
+    Returns:
+        List[Notification]: the list of notifications
+
+    """
+    notification_repo = NotificationRepository(db)
+    notifications = notification_repo.get_all_notifications(skip=skip, limit=limit)
+    return notifications
+
+
+@crud_api_app.get("/notifications/{notification_id}", response_model=Notification)
+async def read_notification(
+    notification_id: int,
+    db: Session = Depends(get_db)
+) -> Notification:
+    """
+    Read a notification.
+
+    Args:
+        notification_id (int): the id of the notification
+        db (Session): the database session
+
+    Returns:
+        Notification: the notification
+
+    """
+    notification_repo = NotificationRepository(db)
+    db_notification = notification_repo.get_notification_by_id(notification_id=notification_id)
+    return db_notification
+
+
+@crud_api_app.put("/notifications/{notification_id}", response_model=Notification)
+async def update_notification(
+    notification_id: int,
+    notification_in: Notification,
+    db: Session = Depends(get_db)
+) -> Notification:
+    """
+    Update a notification.
+
+    Args:
+        notification_id (int): the id of the notification to update
+        notification_in (Notification): the notification to update
+        db (Session): the database session
+
+    Returns:
+        Notification: the updated notifucation
+        """
+    notification_repo = NotificationRepository(db)
+    db_notification = notification_repo.update_notification(
+        notification_id=notification_id,
+        notification_data=notification_in
+    )
+    return db_notification
+
+
+@crud_api_app.delete("/notifications/{notification_id}", response_model=Notification)
+async def delete_notification(
+    notification_id: int,
+    db: Session = Depends(get_db())
+) -> bool:
+    """
+    Delete a notification.
+
+    Args:
+        notification_id (int): the id of the notification
+        db (Session): the database session
+
+    Returns:
+        Notification: the deleted notification
+
+    """
+    notification_repo = NotificationRepository(db)
+    db_notification = notification_repo.delete_notification(notification_id=notification_id)
+    return db_notification
 
 
 crud_api_app.include_router(router)

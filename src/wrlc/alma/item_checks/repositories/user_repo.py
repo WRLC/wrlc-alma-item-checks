@@ -3,6 +3,7 @@ import logging
 from typing import List
 from sqlalchemy import Select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from src.wrlc.alma.item_checks.models.notification import Notification
 from src.wrlc.alma.item_checks.models.user import User as SQLAlchemyUserModel
 from src.wrlc.alma.item_checks.api.models.user import UserCreate as PydanticUserCreate
@@ -14,7 +15,7 @@ class UserRepository:
     Repository for managing users in the Alma item checks system.
     """
 
-    def __init__(self, session):
+    def __init__(self, session: Session):
         self.session = session
 
     def create_user(self, user_data: PydanticUserCreate) -> SQLAlchemyUserModel:
@@ -76,8 +77,16 @@ class UserRepository:
             .join(Notification, SQLAlchemyUserModel.id == Notification.user_id)
             .where(Notification.check_id == check_id)
         )
-
-        return self.session.execute(stmt).scalars().all()
+        try:
+            return list(self.session.execute(stmt).scalars().all())
+        except SQLAlchemyError as e:
+            logging.error(f'Unexpected error: {e}')
+            self.session.rollback()
+            raise
+        except Exception as e:
+            logging.error(f'Unexpected error: {e}')
+            self.session.rollback()
+            raise
 
     def get_user_by_id(self, user_id: int) -> SQLAlchemyUserModel:
         """
@@ -92,7 +101,7 @@ class UserRepository:
         """
         stmt = Select(SQLAlchemyUserModel).where(SQLAlchemyUserModel.id == user_id)
         try:
-            return self.session.execute(stmt).scalars.one()
+            return self.session.execute(stmt).scalars().one()
         except SQLAlchemyError as e:
             logging.error(f'Unexpected error: {e}')
             self.session.rollback()
