@@ -111,7 +111,7 @@ async def update_check(
 @crud_api_app.delete("/checks/{check_id}", response_model=Check)
 async def delete_check(
     check_id: int,
-    db: Session = Depends(get_db())
+    db: Session = Depends(get_db)
 ) -> bool:
     """
     Delete a check.
@@ -178,7 +178,7 @@ async def read_users(
 @crud_api_app.get("/users/{user_id}", response_model=User)
 async def read_user(
     user_id: int,
-    db: Session = Depends(get_db())
+    db: Session = Depends(get_db)
 ) -> User:
     """
     Read a user.
@@ -222,7 +222,7 @@ async def update_user(
 @crud_api_app.delete("/users/{user_id}", response_model=User)
 async def delete_user(
     user_id: int,
-    db: Session = Depends(get_db())
+    db: Session = Depends(get_db)
 ) -> bool:
     """
     Delete a user.
@@ -334,7 +334,7 @@ async def update_notification(
 @crud_api_app.delete("/notifications/{notification_id}", response_model=Notification)
 async def delete_notification(
     notification_id: int,
-    db: Session = Depends(get_db())
+    db: Session = Depends(get_db)
 ) -> bool:
     """
     Delete a notification.
