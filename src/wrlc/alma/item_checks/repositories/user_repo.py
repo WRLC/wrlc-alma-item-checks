@@ -1,6 +1,4 @@
 from sqlalchemy import Select
-
-from src.wrlc.alma.item_checks.models.check import Check
 from src.wrlc.alma.item_checks.models.notification import Notification
 from src.wrlc.alma.item_checks.models.user import User
 

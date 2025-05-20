@@ -1,10 +1,8 @@
 """Alembic environment script for database migrations."""
 import os
 from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
 from dotenv import load_dotenv
 
@@ -22,18 +20,15 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
 from src.wrlc.alma.item_checks.models.base import Base
+# noinspection PyUnresolvedReferences
 from src.wrlc.alma.item_checks.models.check import Check
+# noinspection PyUnresolvedReferences
 from src.wrlc.alma.item_checks.models.notification import Notification
+# noinspection PyUnresolvedReferences
 from src.wrlc.alma.item_checks.models.user import User
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
 
 config.set_main_option('sqlalchemy.url', os.getenv('SQLALCHEMY_CONNECTION_STRING'))
 
