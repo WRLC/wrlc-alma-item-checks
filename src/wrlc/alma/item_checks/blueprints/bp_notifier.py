@@ -76,13 +76,15 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
         job_id=job_id
     )
 
+    body_addendum: str | None = None  # initialize email body addendum
+
     if msg.get_json().get("email_body_addendum"):  # check if email body addendum exists)
         body_addendum: str = msg.get_json().get("email_body_addendum")  # get email body addendum
 
     html_content_body: str = notifier_service.render_email_body(  # render email body
         template=TEMPLATE_FILE_NAME,
         check=check,
-        body_addendum=body_addendum if body_addendum else None,
+        body_addendum=body_addendum,
         html_table=html_table,
         job_id=job_id
     )

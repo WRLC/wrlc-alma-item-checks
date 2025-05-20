@@ -53,3 +53,5 @@ azurite-data
 .DS_Store
 .idea
 .vscode
+
+*.sql
