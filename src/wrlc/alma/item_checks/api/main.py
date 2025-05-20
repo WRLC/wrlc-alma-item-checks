@@ -2,10 +2,11 @@
 from fastapi import FastAPI, Depends, APIRouter
 from typing import List
 from sqlalchemy.orm import Session
-from src.wrlc.alma.item_checks.api.models.check import Check, CheckCreate, CheckUpdate
 from src.wrlc.alma.item_checks.api.dependencies import get_db
+from src.wrlc.alma.item_checks.api.models.check import Check, CheckCreate, CheckUpdate
+from src.wrlc.alma.item_checks.api.models.user import User, UserCreate, UserUpdate
 from src.wrlc.alma.item_checks.repositories.check_repo import CheckRepository
-
+from src.wrlc.alma.item_checks.repositories.user_repo import UserRepository
 
 # noinspection PyArgumentEqualDefault
 crud_api_app = FastAPI(
@@ -16,6 +17,7 @@ crud_api_app = FastAPI(
 router = APIRouter(prefix="/api")
 
 
+# CHECK API
 @crud_api_app.post("/checks/", response_model=Check, status_code=201)
 async def create_check(
     check_in: CheckCreate,
@@ -123,6 +125,117 @@ async def delete_check(
     check_repo = CheckRepository(db)
     db_check = check_repo.delete_check(check_id=check_id)
     return db_check
+
+
+# USER API
+@crud_api_app.post("/users/", response_model=User, status_code=201)
+async def create_user(
+    user_in: UserCreate,
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Create a new user.
+
+    Args:
+        user_in (User): the user to create
+        db (Session): the database session
+
+    Returns:
+        User: the created user
+
+    """
+    user_repo = UserRepository(db)
+    db_user = user_repo.create_user(user_data=user_in)
+    return db_user
+
+
+@crud_api_app.get("/users/", response_model=List[User])
+async def read_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+) -> List[User]:
+    """
+    Read all users.
+
+    Args:
+        skip (int): the number of users to skip
+        limit (int): the number of users to limit
+        db (Session): the database session
+
+
+    Returns:
+        List[User]: the list of users
+
+    """
+    user_repo = UserRepository(db)
+    users = user_repo.get_all_users(skip=skip, limit=limit)
+    return users
+
+
+@crud_api_app.get("/users/{user_id}", response_model=User)
+async def read_user(
+    user_id: int,
+    db: Session = Depends(get_db())
+) -> User:
+    """
+    Read a user.
+
+    Args:
+        user_id (int): the id of the user
+        db (Session): the database session
+
+    Returns:
+        User: the user
+
+    """
+    user_repo = UserRepository(db)
+    db_user = user_repo.get_user_by_id(user_id=user_id)
+    return db_user
+
+
+@crud_api_app.put("/users/{user_id}", response_model=User)
+async def update_user(
+    user_id: int,
+    user_in: UserUpdate,
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Update a user.
+
+    Args:
+        user_id (int): the user ID to update
+        user_in (UserUpdate): the user to update
+        db (Session): the database session
+
+    Returns:
+        User: the updated user
+
+    """
+    user_repo = UserRepository(db)
+    db_user = user_repo.update_user(user_id=user_id, user_data=user_in)
+    return db_user
+
+
+@crud_api_app.delete("/users/{user_id}", response_model=User)
+async def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db())
+) -> bool:
+    """
+    Delete a user.
+
+    Args:
+        user_id (int): the id of the user
+        db (Session): the database session
+
+    Returns:
+        User: the deleted user
+
+    """
+    user_repo = UserRepository(db)
+    db_user = user_repo.delete_user(user_id=user_id)
+    return db_user
 
 
 crud_api_app.include_router(router)
