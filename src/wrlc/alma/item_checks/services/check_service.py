@@ -1,7 +1,8 @@
+"""Service for managing checks in the Alma item checks system."""
 from sqlalchemy.orm import Session
 
-from wrlc.alma.item_checks.models.check import Check
-from wrlc.alma.item_checks.repositories.check_repo import CheckRepository
+from src.wrlc.alma.item_checks.models.check import Check
+from src.wrlc.alma.item_checks.repositories.check_repo import CheckRepository
 
 
 class CheckService:

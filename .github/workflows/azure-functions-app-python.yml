@@ -1,3 +1,4 @@
+#file: noinspection UndefinedAction
 # This workflow will build a Python app and deploy it to an Azure Functions App on Linux when a commit is pushed to your default branch.
 #
 # This workflow assumes you have already created the target Azure Functions app.
