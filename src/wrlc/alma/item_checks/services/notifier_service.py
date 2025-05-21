@@ -18,7 +18,9 @@ NOTIFIER_CONTAINER_NAME: str = config.NOTIFIER_CONTAINER_NAME
 # noinspection PyMethodMayBeStatic
 class NotifierService:
     """Service for sending emails."""
-    def render_email_body(self, template: str, check: Check, body_addendum: str, html_table: str, job_id: str) -> str | None:
+    def render_email_body(
+            self, template: str, check: Check, body_addendum: str, html_table: str, job_id: str
+    ) -> str | None:
         """
         Render the email body using the provided template and context.
 
