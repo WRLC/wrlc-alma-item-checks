@@ -51,7 +51,7 @@ def ScfDuplicatesTimer(scfduptimer: func.TimerRequest) -> None:
     job_service: JobService = JobService()  # get job service
     job_id: str = job_service.generate_job_id(check)  # create job ID
 
-    alma_client: AlmaApiClient = AlmaApiClient(check.api_key, "NA")  # get Alma client
+    alma_client: AlmaApiClient = AlmaApiClient(check.api_key, "NA", timeout=250)  # get Alma client
 
     try:
         report: AnalyticsReportResults = alma_client.analytics.get_report(check.report_path)  # get report
