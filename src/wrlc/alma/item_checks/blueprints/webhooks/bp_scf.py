@@ -14,7 +14,7 @@ from src.wrlc.alma.item_checks.utils.security import validate_webhook_signature
 bp = Blueprint()
 
 
-@bp.route('scfwebhook', methods=['GET', 'POST'])
+@bp.route('scfwebhook', methods=['GET', 'POST'], auth_level='anonymous')
 def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
     """
     Webhook endpoint for handling SCF IZ Item Update events.
