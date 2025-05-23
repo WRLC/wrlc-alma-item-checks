@@ -145,7 +145,7 @@ class NotifierService:
 
         return email_client
 
-    def create_html_table(self, msg: func.QueueMessage, job_id: str) -> str | None:
+    def create_html_table(self, msg: func.QueueMessage, job_id: str, check: Check) -> str | None:
         """
         Create an HTML table from JSON data stored in Azure Blob Storage.
 
@@ -183,6 +183,7 @@ class NotifierService:
                 if combined_data:
                     json_io = io.StringIO(combined_data)
                     df = pd.read_json(json_io, orient='records')  # Adjust 'orient' if needed
+                    df.style.set_caption(check.email_subject)
 
                     # Check if column '0' exists and all its values are '0' (as string or int)
                     if '0' in df.columns and df['0'].astype(str).eq('0').all():

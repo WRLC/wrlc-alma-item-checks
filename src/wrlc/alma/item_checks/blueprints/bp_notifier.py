@@ -73,7 +73,8 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
 
     html_table: str | None = notifier_service.create_html_table(  # create HTML table from JSON data
         msg=msg,
-        job_id=job_id
+        job_id=job_id,
+        check=check
     )
 
     body_addendum: str | None = None  # initialize email body addendum
