@@ -118,11 +118,12 @@ class SCFNoX:
         alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')  # get Alma client
 
         item_data.item_data.barcode += 'X'  # Update the barcode
+        logging.info(f"Processing item {item_data.item_data.barcode}")
 
         alma_client.items.update_item(  # Save the item back to Alma
-            mm_id=item_data.bib_data.mms_id,
+            mms_id=item_data.bib_data.mms_id,
             holding_id=item_data.holding_data.holding_id,
-            item_id=item_data.item_data.pid,
+            item_pid=item_data.item_data.pid,
             item_record_data=item_data,
         )
 
