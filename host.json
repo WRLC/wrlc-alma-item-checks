@@ -8,8 +8,7 @@
       }
     },
     "logLevel": {
-      "default": "warning",
-      "function": "information"
+      "default": "warning"
     }
   },
   "extensionBundle": {
