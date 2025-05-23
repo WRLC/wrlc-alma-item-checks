@@ -1390,14 +1390,14 @@ watchdog = ["watchdog (>=2.3)"]
 
 [[package]]
 name = "wrlc-alma-api-client"
-version = "0.1.8"
+version = "0.1.9"
 description = "A Python client for the Ex Libris Alma REST APIs"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 files = [
-    {file = "wrlc_alma_api_client-0.1.8-py3-none-any.whl", hash = "sha256:65c4f18f37c88bea13cb576ad709c12987b9a75f6ee897e798741c6881f23f50"},
-    {file = "wrlc_alma_api_client-0.1.8.tar.gz", hash = "sha256:ef24eef093d4a1a23a7b1bba7c3daa43fe76c6f14ac5d7604cd79209e21b2211"},
+    {file = "wrlc_alma_api_client-0.1.9-py3-none-any.whl", hash = "sha256:b13a7224a24a2e57f69eb7ed59215a2c46f3b84535af02339b816f12959ae895"},
+    {file = "wrlc_alma_api_client-0.1.9.tar.gz", hash = "sha256:4c99e6c745a7177d43304cebce12d59c9f314f21965776a2ff9f3aab1e57097c"},
 ]
 
 [package.dependencies]

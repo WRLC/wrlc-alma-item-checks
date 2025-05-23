@@ -7,6 +7,8 @@ from azure.functions import Blueprint
 from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
 # noinspection PyPackageRequirements
 from wrlc.alma.api_client.models.item import Item
+import src.wrlc.alma.item_checks.config as config
+from src.wrlc.alma.item_checks.utils.security import validate_webhook_signature
 
 bp = Blueprint()
 
@@ -22,9 +24,13 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
     Returns:
         func.HttpResponse: The HTTP response.
     """
+    # ----- Validate Signature ----- #
+    if not validate_webhook_signature(req.get_body(), config.SCF_WEBHOOK_SECRET, req.headers.get("X-Exl-Signature")):
+        return func.HttpResponse("Invalid signature", status_code=401)
+
     # ----- Parse Item ----- #
     try:
-        item: Item = Item(**req.get_json())  # Parse incoming JSON into Item
+        item: Item = Item(**req.get_json()['item'])  # Parse incoming JSON into Item
 
     except ValueError as e:  # Catch JSON decoding errors specifically
         logging.error(f"Error processing JSON request: {e}")
