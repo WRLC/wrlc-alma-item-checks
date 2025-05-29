@@ -14,7 +14,7 @@ class Check(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    api_key: Mapped[str] = mapped_column(String(255))
-    report_path: Mapped[str] = mapped_column(String(255))
-    email_subject: Mapped[str] = mapped_column(String(255), nullable=False)
-    email_body: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_key: Mapped[str] = mapped_column(String(255), nullable=True)
+    report_path: Mapped[str] = mapped_column(String(255), nullable=True)
+    email_subject: Mapped[str] = mapped_column(String(255), nullable=True)
+    email_body: Mapped[str] = mapped_column(String(255), nullable=True)
