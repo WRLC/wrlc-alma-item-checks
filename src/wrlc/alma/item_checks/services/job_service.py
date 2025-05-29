@@ -16,6 +16,6 @@ class JobService:
         """
         timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
         unique_id = str(uuid.uuid4())[:8]
-        job_id = f"timer_{check.name}_{timestamp}_{unique_id}"  # Use passed name
+        job_id = f"job_{check.name}_{timestamp}_{unique_id}"  # Use passed name
 
         return job_id

@@ -132,15 +132,15 @@ class SCFNoRowTray:
         """
         Check if row/tray data is in wrong format and not in a skipped location
         """
-        internal_note_1 = self.item.item_data.internal_note_1
+        alt_call_number = self.item.item_data.alternative_call_number
         pattern = r"^R.*M.*S"  # regex for correct row/tray data format
 
-        if re.search(pattern, internal_note_1) is not None:  # if call number in correct format, skip processing
-            logging.info('SCFNoRowTray.wrong_row_tray_data: Internal Note 1 in correct format, skipping processing')
+        if re.search(pattern, alt_call_number) is not None:  # if call number in correct format, skip processing
+            logging.info('SCFNoRowTray.wrong_row_tray_data: Alt Call Number in correct format, skipping processing')
             return False
 
         for location in SKIP_LOCATIONS:  # if any skip location is in call number, skip processing
-            if location in internal_note_1:
+            if location in alt_call_number:
                 logging.info('SCFNoRowTray.wrong_row_tray_data: Item in skipped location, skipping processing')
                 return False
 
