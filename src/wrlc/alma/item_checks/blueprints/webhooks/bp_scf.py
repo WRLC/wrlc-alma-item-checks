@@ -5,6 +5,8 @@ import logging
 import azure.functions as func
 # noinspection PyPackageRequirements
 from azure.functions import Blueprint
+from wrlc.alma.item_checks.handlers.scf_no_row_tray import SCFNoRowTray
+from wrlc.alma.item_checks.handlers.scf_shared import SCFShared
 from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
 # noinspection PyPackageRequirements
 from wrlc.alma.api_client.models.item import Item
@@ -50,10 +52,22 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Unexpected error processing request: {e}", exc_info=True)  # Log traceback
         return func.HttpResponse("Error processing request", status_code=500)
 
-    # ----- No X in barcode ----- #
-    scf_no_x: SCFNoX = SCFNoX(item)  # Create SCFNoX instance from item
+    # ----- Shared Item Checks ----- #
+    scf_shared: SCFShared = SCFShared(item)  # Create SCFShared instance from item
+    item_data: Item = scf_shared.should_process()  # check if item should be processed and re-retrieve it from Alma
 
-    if isinstance(scf_no_x.should_process(), Item):  # Check if SCFNoX should be processed
-        scf_no_x.process(scf_no_x.should_process())  # If so, process it
+    if isinstance(item_data, Item):  # if item present, continue processing
+
+        # ----- No X in barcode ----- #
+        scf_no_x: SCFNoX = SCFNoX(item_data)  # Create SCFNoX instance from item
+
+        if scf_no_x.should_process():  # Check if SCFNoX should be processed
+            scf_no_x.process()  # If so, process it
+
+        # ----- Incorrect or No Row/Tray information ----- #
+        scf_no_row_tray: SCFNoRowTray = SCFNoRowTray(item_data)  # Create SCFNoRowTray instance from item
+
+        if scf_no_row_tray.should_process():  # Check if SCFNoRowTray should be processed
+            scf_no_row_tray.process()  # If so, process it
 
     return func.HttpResponse("Webhook received", status_code=200)  # Return 200 OK
