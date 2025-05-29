@@ -2,11 +2,12 @@
 import logging
 from sqlalchemy.orm import Session
 from wrlc.alma.api_client import AlmaApiClient
+from wrlc.alma.api_client.exceptions import AlmaApiError
 from wrlc.alma.api_client.models.item import Item
 import src.wrlc.alma.item_checks.config as config
 from src.wrlc.alma.item_checks.services.check_service import CheckService
 from src.wrlc.alma.item_checks.repositories.database import SessionMaker
-from wrlc.alma.item_checks.models.check import Check
+from src.wrlc.alma.item_checks.models.check import Check
 
 PROVENANCE = config.PROVENANCE
 
@@ -61,7 +62,12 @@ class SCFShared:
 
         # Retrieve the item from Alma using the barcode
         alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')
-        item_data: Item = alma_client.items.get_item_by_barcode(self.item.item_data.barcode)
+
+        try:
+            item_data: Item = alma_client.items.get_item_by_barcode(self.item.item_data.barcode)
+        except AlmaApiError as e:  # If there is an error retrieving the item from Alma, log a warning and return None
+            logging.info(f"Error retrieving item from Alma, skipping processing: {e}")
+            return None
 
         # Check if the item was found
         if not item_data:

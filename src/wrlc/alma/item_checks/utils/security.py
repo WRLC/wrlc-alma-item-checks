@@ -32,10 +32,15 @@ def validate_webhook_signature(body_bytes: bytes, secret: str, received_signatur
         expected_signature_bytes = hmac_object.digest()
 
         expected_signature_base64 = base64.b64encode(expected_signature_bytes).decode()
-        logging.debug(f"Expected signature: {expected_signature_base64}")
-        logging.debug(f"Received signature: {received_signature}")
 
-        return hmac.compare_digest(expected_signature_base64, received_signature)
+        result = hmac.compare_digest(expected_signature_base64, received_signature)
+
+        if not result:
+            logging.error("Webhook signature validation failed.")
+            logging.warning(f"Expected signature: {expected_signature_base64}")
+            logging.warning(f"Received signature: {received_signature}")
+
+        return result
 
     except Exception as e:
         logging.error(f"Error during signature validation: {e}", exc_info=True)

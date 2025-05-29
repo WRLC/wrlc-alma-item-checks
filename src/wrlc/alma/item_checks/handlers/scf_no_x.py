@@ -37,7 +37,7 @@ class SCFNoX:
             bool: True if the event should be processed, False otherwise.
         """
         if self.item.item_data.barcode.endswith('X'):  # Check if barcode ends with 'X'
-            logging.info(f"Barcode ends in X, skipping processing")
+            logging.info(f"ScfNoX: Barcode ends in X, skipping processing")
             return False
 
         return True
@@ -59,13 +59,12 @@ class SCFNoX:
         db.close()  # close database session
 
         if not check:  # check if check_name exists
-            logging.error(f'Check "{check_name}" does not exist. Exiting')
+            logging.error(f'ScfNoX: Check "{check_name}" does not exist. Exiting')
             return
 
         alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')  # get Alma client
 
         self.item.item_data.barcode += 'X'  # Update the barcode
-        logging.info(f"Processing item {self.item.item_data.barcode}")
 
         alma_client.items.update_item(  # Save the item back to Alma
             mms_id=self.item.bib_data.mms_id,

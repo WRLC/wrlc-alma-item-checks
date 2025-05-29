@@ -3,12 +3,12 @@ import logging
 import re
 from sqlalchemy.orm import Session
 from wrlc.alma.api_client.models.item import Item
-from wrlc.alma.item_checks.api.models.check import Check
+import src.wrlc.alma.item_checks.config as config
+from src.wrlc.alma.item_checks.models.check import Check
 from src.wrlc.alma.item_checks.repositories.database import SessionMaker
 from src.wrlc.alma.item_checks.services.check_service import CheckService
 from src.wrlc.alma.item_checks.services.job_service import JobService
-import wrlc.alma.item_checks.config as config
-from wrlc.alma.item_checks.services.storage_service import StorageService
+from src.wrlc.alma.item_checks.services.storage_service import StorageService
 
 NOTIFIER_QUEUE_NAME = config.NOTIFIER_QUEUE_NAME
 EXCLUDED_NOTES = config.EXCLUDED_NOTES
@@ -41,14 +41,12 @@ class SCFNoRowTray:
 
         """
         if self.no_row_tray_data() or self.wrong_row_tray_data():  # check if row/tray data present and in right format
-            logging.info('Call number and internal note 1 exist, skipping processing')
-            return False
+            if self.item.item_data.internal_note_1 in EXCLUDED_NOTES:  # check if internal note 1 is an excluded value
+                logging.info('SCFNoRowTray: internal note 1 is in excluded list, skipping processing')
+                return False
+            return True
 
-        if self.item.item_data.internal_note_1 in EXCLUDED_NOTES:  # check if internal note 1 is an excluded value
-            logging.info('internal note 1 is in list, skipping processing')
-            return False
-
-        return True
+        return False
 
     def process(self) -> None:
         """
@@ -69,7 +67,7 @@ class SCFNoRowTray:
         db.close()  # close database session
 
         if not check:  # check if check_name exists
-            logging.error(f'Check "{check_name}" does not exist. Exiting')
+            logging.error(f'SCFNoRowTray: Check "{check_name}" does not exist. Exiting')
             return
 
         job_id: str = self.job_service.generate_job_id(check)  # create job ID
@@ -77,7 +75,7 @@ class SCFNoRowTray:
         title = self.item.bib_data.title if self.item.bib_data.title else ''
         author = self.item.bib_data.author if self.item.bib_data.author else ''
         barcode = self.item.item_data.barcode if self.item.item_data.barcode else ''
-        call_number = self.item.holding_data.call_number if self.item.holding_data.call_number else ''
+        call_number = self.item.item_data.alternative_call_number if self.item.item_data.alternative_call_number else ''
         internal_note_1 = self.item.item_data.internal_note_1 if self.item.item_data.internal_note_1 else ''
 
         # Create item HTML table for the email
@@ -89,7 +87,7 @@ class SCFNoRowTray:
                         <th>Title</th>
                         <th>Author</th>
                         <th>Barcode</th>
-                        <th>Call Number</th>
+                        <th>Item Call Number</th>
                         <th>Internal Note 1</th>
                     </tr>
                 </thead>
@@ -121,8 +119,12 @@ class SCFNoRowTray:
         """
         Check if row/tray data is missing
         """
-        if self.item.holding_data.call_number and self.item.item_data.internal_note_1:
-            return False  # if both call # and internal note 1 exist, skip processing
+        alt_call_number = self.item.item_data.alternative_call_number
+        internal_note_1 = self.item.item_data.internal_note_1
+
+        if alt_call_number and internal_note_1:
+            logging.info('SCFNoRowTray: Call number and internal note 1 exist, skipping processing')
+            return False  # if both item call # and internal note 1 exist, skip processing
 
         return True
 
@@ -130,13 +132,16 @@ class SCFNoRowTray:
         """
         Check if row/tray data is in wrong format and not in a skipped location
         """
+        alt_call_number = self.item.item_data.alternative_call_number
         pattern = r"^R.*M.*S"  # regex for correct row/tray data format
 
-        if re.search(pattern, self.item.holding_data.call_number):  # if call number in correct format, skip processing
+        if re.search(pattern, alt_call_number) is not None:  # if call number in correct format, skip processing
+            logging.info('SCFNoRowTray: Call number in correct format, skipping processing')
             return False
 
         for location in SKIP_LOCATIONS:  # if any skip location is in call number, skip processing
-            if location in self.item.holding_data.call_number:
+            if location in alt_call_number:
+                logging.info('SCFNoRowTray: Call number in skipped location, skipping processing')
                 return False
 
         return True
