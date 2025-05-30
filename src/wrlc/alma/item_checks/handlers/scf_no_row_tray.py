@@ -72,11 +72,12 @@ class SCFNoRowTray:
 
         job_id: str = self.job_service.generate_job_id(check)  # create job ID
 
-        title = self.item.bib_data.title if self.item.bib_data.title else ''
-        author = self.item.bib_data.author if self.item.bib_data.author else ''
-        barcode = self.item.item_data.barcode if self.item.item_data.barcode else ''
-        call_number = self.item.item_data.alternative_call_number if self.item.item_data.alternative_call_number else ''
-        internal_note_1 = self.item.item_data.internal_note_1 if self.item.item_data.internal_note_1 else ''
+        title = self.item.bib_data.title if self.item.bib_data.title else 'None'
+        author = self.item.bib_data.author if self.item.bib_data.author else 'None'
+        barcode = self.item.item_data.barcode if self.item.item_data.barcode else 'None'
+        call_number = self.item.item_data.alternative_call_number if self.item.item_data.alternative_call_number \
+            else 'None'
+        internal_note_1 = self.item.item_data.internal_note_1 if self.item.item_data.internal_note_1 else 'None'
 
         # Create item HTML table for the email
         addendum_table = f"""
@@ -122,7 +123,7 @@ class SCFNoRowTray:
         alt_call_number = self.item.item_data.alternative_call_number
         internal_note_1 = self.item.item_data.internal_note_1
 
-        if alt_call_number and internal_note_1:
+        if alt_call_number is not None and internal_note_1 is not None:
             logging.info('SCFNoRowTray.no_row_tray_data: Call number and internal note 1 exist, skipping processing')
             return False  # if both item call # and internal note 1 exist, skip processing
 

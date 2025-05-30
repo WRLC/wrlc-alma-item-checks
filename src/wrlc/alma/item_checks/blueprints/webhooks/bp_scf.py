@@ -5,11 +5,12 @@ import logging
 import azure.functions as func
 # noinspection PyPackageRequirements
 from wrlc.alma.api_client.models.item import Item
+import src.wrlc.alma.item_checks.config as config
 from src.wrlc.alma.item_checks.handlers.scf_no_row_tray import SCFNoRowTray
 from src.wrlc.alma.item_checks.handlers.scf_shared import SCFShared
 from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
-import src.wrlc.alma.item_checks.config as config
 from src.wrlc.alma.item_checks.utils.security import validate_webhook_signature
+from src.wrlc.alma.item_checks.handlers.scf_withdrawn import SCFWithdrawn
 
 bp = func.Blueprint()
 
@@ -67,5 +68,11 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
 
         if scf_no_row_tray.should_process():  # Check if SCFNoRowTray should be processed
             scf_no_row_tray.process()  # If so, process it
+
+        # ----- Withdrawn Item ----- #
+        # scf_withdrawn: SCFWithdrawn = SCFWithdrawn(item_data)
+
+        # if scf_withdrawn.should_process():
+        #    scf_withdrawn.process()
 
     return func.HttpResponse("Webhook received", status_code=200)  # Return 200 OK
