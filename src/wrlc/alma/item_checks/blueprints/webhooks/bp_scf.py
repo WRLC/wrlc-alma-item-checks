@@ -4,16 +4,14 @@ import logging
 # noinspection PyPackageRequirements
 import azure.functions as func
 # noinspection PyPackageRequirements
-from azure.functions import Blueprint
-from wrlc.alma.item_checks.handlers.scf_no_row_tray import SCFNoRowTray
-from wrlc.alma.item_checks.handlers.scf_shared import SCFShared
-from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
-# noinspection PyPackageRequirements
 from wrlc.alma.api_client.models.item import Item
+from src.wrlc.alma.item_checks.handlers.scf_no_row_tray import SCFNoRowTray
+from src.wrlc.alma.item_checks.handlers.scf_shared import SCFShared
+from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
 import src.wrlc.alma.item_checks.config as config
 from src.wrlc.alma.item_checks.utils.security import validate_webhook_signature
 
-bp = Blueprint()
+bp = func.Blueprint()
 
 
 @bp.route('scfwebhook', methods=['GET', 'POST'], auth_level='anonymous')
