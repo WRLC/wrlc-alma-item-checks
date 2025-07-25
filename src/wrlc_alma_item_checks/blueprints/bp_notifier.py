@@ -1,16 +1,18 @@
 """Notifier blueprint for Alma item checks."""
 import logging
+
 import azure.functions as func
-from azure.communication.email import EmailClient
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.orm import Session
-import src.wrlc.alma.item_checks.config as config
-from src.wrlc.alma.item_checks.repositories.check_repo import CheckRepository
-from src.wrlc.alma.item_checks.repositories.database import SessionMaker
-from src.wrlc.alma.item_checks.repositories.user_repo import UserRepository
-from src.wrlc.alma.item_checks.models.check import Check
-from src.wrlc.alma.item_checks.models.user import User
-from src.wrlc.alma.item_checks.services.notifier_service import NotifierService
+
+import src.wrlc_alma_item_checks.config as config
+from src.wrlc_alma_item_checks.repositories.check_repo import CheckRepository
+from src.wrlc_alma_item_checks.repositories.database import SessionMaker
+from src.wrlc_alma_item_checks.repositories.user_repo import UserRepository
+from src.wrlc_alma_item_checks.models.check import Check
+from src.wrlc_alma_item_checks.models.user import User
+from src.wrlc_alma_item_checks.services.notifier_service import NotifierService
+from wrlc_alma_item_checks.models.email import EmailMessage
 
 bp = func.Blueprint()
 
@@ -89,14 +91,10 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
         html_table=html_table,
         job_id=job_id
     )
+    email_to_send: EmailMessage = EmailMessage(
+        to=[user.email for user in users],
+        subject=check.email_subject,
+        html=html_content_body
+    )
 
-    email_client: EmailClient = notifier_service.create_email_client()  # get email client
-
-    for user in users:  # send email to each user
-        notifier_service.send_email(
-            check=check,
-            email=user.email,
-            body=html_content_body,
-            job_id=job_id,
-            email_client=email_client
-        )
+    notifier_service.send_email(email_message=email_to_send, job_id=job_id)

@@ -4,9 +4,9 @@ import logging
 from sqlalchemy import Select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from src.wrlc.alma.item_checks.models.notification import Notification as SQLAlchemyNotification
-from src.wrlc.alma.item_checks.api.models.notification import NotificationCreate as PydanticNotificationCreate
-from src.wrlc.alma.item_checks.api.models.notification import NotificationUpdate as PydanticNotificationUpdate
+from src.wrlc_alma_item_checks.models.notification import Notification as SQLAlchemyNotification
+from src.wrlc_alma_item_checks.api.models.notification import NotificationCreate as PydanticNotificationCreate
+from src.wrlc_alma_item_checks.api.models.notification import NotificationUpdate as PydanticNotificationUpdate
 
 
 # noinspection PyMethodMayBeStatic

@@ -4,8 +4,7 @@ from typing import Dict, List, Union, Optional
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.storage.queue import QueueServiceClient, QueueClient, TextBase64EncodePolicy
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
-import src.wrlc.alma.item_checks.config as config
-from src.wrlc.alma.item_checks.services.data_service import DataService
+from src.wrlc_alma_item_checks.services.data_service import DataService
 
 # Cache the connection string locally within the module
 _STORAGE_CONNECTION_STRING: Optional[str] = None
@@ -17,24 +16,9 @@ class StorageService:
     def __init__(self):
         self.data_service = DataService()
 
-    def _get_storage_connection_string(self) -> str:
-        """Gets the storage connection string, caching it after the first call."""
-        global _STORAGE_CONNECTION_STRING
-        if _STORAGE_CONNECTION_STRING is None:
-            # Azure Functions typically uses 'AzureWebJobsStorage'
-            try:
-                # Use the helper to ensure it's present
-                _STORAGE_CONNECTION_STRING = config.STORAGE_CONNECTION_STRING_NAME
-            except Exception as e:
-                # Log and re-raise as ValueError for compatibility with SDK expectations if needed,
-                # or handle appropriately depending on desired function behavior on config error.
-                logging.error(f"Storage Configuration Error: {e}")
-                raise ValueError(f"Storage Configuration Error: {e}") from e
-        return _STORAGE_CONNECTION_STRING
-
     def get_blob_service_client(self) -> BlobServiceClient:
         """Returns an authenticated BlobServiceClient instance."""
-        conn_str = self._get_storage_connection_string()
+        conn_str = "%AzureWebJobsStorage%"
         try:
             return BlobServiceClient.from_connection_string(conn_str)
         except ValueError as e:
@@ -43,7 +27,7 @@ class StorageService:
 
     def get_queue_service_client(self) -> QueueServiceClient:
         """Returns an authenticated QueueServiceClient instance."""
-        conn_str = self._get_storage_connection_string()
+        conn_str = "%AzureWebJobsStorage%"
         try:
             # Note: Functions often expect Base64 encoding for queue triggers/outputs.
             # Adjust policy if needed based on your specific binding configurations.
@@ -63,7 +47,7 @@ class StorageService:
         """
         if not queue_name:
             raise ValueError("Queue name cannot be empty.")
-        conn_str = self._get_storage_connection_string()
+        conn_str = "%AzureWebJobsStorage%"
         try:
             # Inherits policy from service client if created that way, or specify explicitly
             return QueueClient.from_connection_string(

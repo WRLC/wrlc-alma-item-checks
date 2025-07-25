@@ -1,31 +1,70 @@
 # **WRLC Alma Item Checks Azure Functions**
 
-This project contains an Azure Functions application designed to manage data and automate tasks related to Alma item checks for WRLC. It includes a CRUD API for managing checks, users, and notifications, as well as other scheduled/triggered functions.
+This project contains an Azure Functions application designed to manage data and automate tasks related to Alma item checks for WRLC.
 
 ## **Features**
 
-* **CRUD API:** A RESTful API built with FastAPI for managing Check, User, and Notification data stored in a relational database (MySQL/PostgreSQL via SQLAlchemy).  
-* **Database Persistence:** Uses SQLAlchemy as an ORM with a repository pattern for database interactions.  
-* **Database Migrations:** Managed using Alembic.  
-* **Scheduled/Triggered Functions:** Includes other Azure Functions for tasks like sending notifications and processing webhooks.  
-* **Azure Storage Integration:** Utilizes Azure Blob Storage and Queue Storage (via Azurite locally).  
-* **Email Notifications:** Sends emails via Azure Communication Services (implied by dependencies).  
-* **Deployment:** Configured for deployment to Azure Functions via GitHub Actions.
+* **Alma Webhooks:** HTTP trigger functions for Alma integration profiles webhook URLs triggered on every item update.
+* **Automated item fixes**: In some cases when an issue is discovered, the function will try to fix it automatically.
+* **Email Notifications:** Sends email notifications when issues are discovered and/or fixed.
+
+## Required Environment Variables
+
+* `SQLALCHEMY_CONNECTION_STRING`: Database connection string
+* `NOTIFIER_QUEUE_NAME`: Name of queue in function's storage account where notifications will be triggered
+* `NOTIFIER_CONTAINER_NAME`: Name of container in function's storage account where notification content is stored
+* `ACS_SENDER_CONTAINER_NAME`: Name of container in the acs-email-sender storage account where email content will be stored.
+
+## Local Development
+
+### Prerequisites
+
+* Python 3.12+ 
+* Poetry (for dependency management)
+* [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local?tabs=windows%2Cisolated-process%2Cnode-v4%2Cpython-v2%2Chttp-trigger%2Ccontainer-apps&pivots=programming-language-python)
+* [Azurite local storage emulator](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azurite?tabs=visual-studio%2Cblob-storage)
+* [Azure Storage Explorer](https://azure.microsoft.com/en-us/products/storage/storage-explorer)
+* [WRLC/acs-email-sender](https://github.com/WRLC/acs-email-sender)
+
+### Setup and Configuration
+
+1. **Clone repository:**
+    ```bash
+    git clone https://github.com/WRLC/wrlc-alma-item-checks.git
+    cd wrlc-alma-item-checks
+    ```
+
+2. **Install dependencies:**
+    ```bash
+    poetry install
+   source .venv/bin/activate
+    ```
+
+3. **Configure local settings:**
+    Copy `local.settings.json` from template:
+    ```bash
+    cp local.settings.json.template local.settings.json
+    ```
+    Set environment variables in `local.settings.json`:
+
+    * `SQLALCHEMY_CONNECTION_STRING`
+    * `NOTIFIER_QUEUE_NAME`
+    * `NOTIFIER_CONTAINER_NAME`
+    * `ACS_SENDER_CONTAINER_NAME`
+    * `ACS_SENDER_CONNECTION_STRING`
+    * `SCF_DUPLICATES_SCHEDULE`
+    * `SCF_DUPLICATES_CHECK_NAME`
+    * `SCF_WEBHOOK_SECRET`
+
+4. Start local function:
+    ```bash
+    azurite
+    func start
+    ```
 
 ## **Deployment**
 
-The project is configured for deployment to Azure Functions using the GitHub Actions workflow located in .github/workflows/azure-functions-app-python.yml.
-
-Ensure you have configured the necessary GitHub Secrets, such as AZURE\_FUNCTIONAPP\_PUBLISH\_PROFILE.
-
-## **API Documentation**
-
-When running the function app locally (func start) or deployed to Azure, the FastAPI integration automatically provides interactive API documentation:
-
-* **Swagger UI:** Accessible at /api/docs  
-* **ReDoc:** Accessible at /api/redoc
-
-These interfaces allow you to explore the available endpoints, their parameters, request/response models, and even test the API directly from your browser.
+Deployment to Azure is automated via GitHub Actions. The process utilizes deployment slots (e.g., stage and production) to ensure zero-downtime updates.
 
 ## **License**
 

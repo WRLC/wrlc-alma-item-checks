@@ -1,7 +1,7 @@
 """Service functions for check jobs"""
 import datetime
 import uuid
-from src.wrlc.alma.item_checks.models.check import Check
+from src.wrlc_alma_item_checks.models.check import Check
 
 
 # noinspection PyMethodMayBeStatic

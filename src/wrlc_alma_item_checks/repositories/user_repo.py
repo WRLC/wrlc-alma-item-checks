@@ -4,10 +4,10 @@ from typing import List
 from sqlalchemy import Select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from src.wrlc.alma.item_checks.models.notification import Notification
-from src.wrlc.alma.item_checks.models.user import User as SQLAlchemyUserModel
-from src.wrlc.alma.item_checks.api.models.user import UserCreate as PydanticUserCreate
-from src.wrlc.alma.item_checks.api.models.user import UserUpdate as PydanticUserUpdate
+from src.wrlc_alma_item_checks.models.notification import Notification
+from src.wrlc_alma_item_checks.models.user import User as SQLAlchemyUserModel
+from src.wrlc_alma_item_checks.api.models.user import UserCreate as PydanticUserCreate
+from src.wrlc_alma_item_checks.api.models.user import UserUpdate as PydanticUserUpdate
 
 
 class UserRepository:

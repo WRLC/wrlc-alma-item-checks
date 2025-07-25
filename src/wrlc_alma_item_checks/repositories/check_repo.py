@@ -4,9 +4,9 @@ from typing import List
 from sqlalchemy import Select
 from sqlalchemy.exc import NoResultFound, SQLAlchemyError
 from sqlalchemy.orm import Session
-from src.wrlc.alma.item_checks.models.check import Check as SQLAlchemyCheckModel
-from src.wrlc.alma.item_checks.api.models.check import CheckCreate as PydanticCheckCreate
-from src.wrlc.alma.item_checks.api.models.check import CheckUpdate as PydanticCheckUpdate
+from src.wrlc_alma_item_checks.models.check import Check as SQLAlchemyCheckModel
+from src.wrlc_alma_item_checks.api.models.check import CheckCreate as PydanticCheckCreate
+from src.wrlc_alma_item_checks.api.models.check import CheckUpdate as PydanticCheckUpdate
 
 
 class CheckRepository:

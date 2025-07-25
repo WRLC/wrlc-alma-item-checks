@@ -2,22 +2,22 @@
 import io
 import logging
 import pathlib
+import uuid
+
 import azure.functions as func
-from azure.communication.email import EmailClient
-from azure.core.exceptions import HttpResponseError, ServiceRequestError
-from azure.identity import DefaultAzureCredential
+from azure.storage.blob import BlobClient
 from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, select_autoescape
 import pandas as pd
-from src.wrlc.alma.item_checks import config
-from src.wrlc.alma.item_checks.models.check import Check
-from src.wrlc.alma.item_checks.services.storage_service import StorageService
 
-NOTIFIER_CONTAINER_NAME: str = config.NOTIFIER_CONTAINER_NAME
+from src.wrlc_alma_item_checks import config
+from src.wrlc_alma_item_checks.models.check import Check
+from src.wrlc_alma_item_checks.models.email import EmailMessage
+from src.wrlc_alma_item_checks.services.storage_service import StorageService
 
 
 # noinspection PyMethodMayBeStatic
 class NotifierService:
-    """Service for sending emails."""
+    """Service for preparting and queuing notifications."""
     def render_email_body(
             self, template: str, check: Check, body_addendum: str, html_table: str, job_id: str
     ) -> str | None:
@@ -74,76 +74,42 @@ class NotifierService:
 
         return html_content_body
 
-    def send_email(self, check: Check, email: str, body: str, job_id: str, email_client: EmailClient) -> None:
+    def send_email(self, email_message: EmailMessage, job_id: str) -> None:
         """
-        Send an email using the provided sender, recipient, subject, and body.
+        Serializes an email message to a blob, which will trigger the downstream email sending service.
 
         Args:
-            check (Check): The check object containing email subject.
-            email (str): The recipient's email address.
-            body (str): The body of the email.
+            email_message (EmailMessage): The email message to send.
             job_id (str): The job ID for logging purposes.
-            email_client (EmailClient): The email client to use for sending the email.
 
-            """
+        """
+        conn_str = config.ACS_SENDER_CONNECTION_STRING
+        container_name = config.ACS_SENDER_CONTAINER_NAME
+
+        if not all([conn_str, container_name]):
+            logging.error(
+                f"Job {job_id}: ACS sender connection string or container name is not configured. "
+                "Cannot create email blob."
+             )
+            raise ValueError("ACS sender service is not fully configured in application settings.")
+
         try:
-            recipient = [{"address": email}]
+            blob_name = f"{job_id}-{uuid.uuid4()}.json"
+            email_json_content = email_message.model_dump_json()
 
-            message = {
-                "senderAddress": config.SENDER_ADDRESS,
-                "recipients": {
-                    "to": recipient
-                },
-                "content": {
-                    "subject": check.email_subject,
-                    "html": body
-                }
-            }
+            logging.info(f"Job {job_id}: Uploading email content to blob '{container_name}/{blob_name}'.")
+            blob_client = BlobClient.from_connection_string(
+                conn_str=conn_str,
+                container_name=container_name,
+                blob_name=blob_name
+            )
 
-            logging.info(f"Job {job_id}: Sending email to {recipient} via ACS.")
-            poller = email_client.begin_send(message)
-            send_result = poller.result()
-            logging.info(f"Job {job_id}: ACS send poller finished.")
+            blob_client.upload_blob(email_json_content, overwrite=True)
+            logging.info(f"Job {job_id}: Successfully uploaded email content blob.")
 
-            status = send_result.get('status') if isinstance(send_result, dict) else None
-            message_id = send_result.get('id') if isinstance(send_result, dict) else None
-
-            if status and status.lower() == "succeeded":
-                logging.info(f"Job {job_id}: Successfully sent email via ACS. Message ID: {message_id}")
-            else:
-                error_details = send_result.get('error', {}) if isinstance(send_result, dict) else send_result
-                logging.error(
-                    f"Job {job_id}: ACS Email send finished with status: {status}. Message ID: {message_id}. Details: "
-                    f"{error_details}"
-                )
-                raise Exception(f"ACS Email send failed with status {status}")
-
-        except (HttpResponseError, ServiceRequestError) as acs_sdk_err:
-            logging.exception(f"Job {job_id}: Azure SDK Error sending email via ACS: {acs_sdk_err}")
-            raise acs_sdk_err
-        except Exception as email_err:
-            logging.exception(f"Job {job_id}: Failed to send email via ACS: {email_err}")
-            raise email_err
-
-        logging.info(f"Notifier finished successfully for Job ID: {job_id}")
-
-    def create_email_client(self) -> EmailClient:
-        """
-        Create an email client using the Azure Communication Service (ACS) connection string or endpoint.
-
-        Returns:
-            EmailClient: The initialized email client.
-        """
-        if config.ACS_CONNECTION_STRING:
-            logging.debug("Using ACS Connection String.")
-            email_client: EmailClient = EmailClient.from_connection_string(config.ACS_CONNECTION_STRING)
-        else:
-            logging.debug("Using ACS Endpoint and DefaultAzureCredential.")
-            credential: DefaultAzureCredential = DefaultAzureCredential()
-            # noinspection PyTypeChecker
-            email_client: EmailClient = EmailClient(endpoint=config.ACS_ENDPOINT, credential=credential)
-
-        return email_client
+        except Exception as e:
+            logging.exception(f"Job {job_id}: Failed to create blob for email message: {e}")
+            raise e
 
     def create_html_table(self, msg: func.QueueMessage, job_id: str, check: Check) -> str | None:
         """
@@ -152,6 +118,7 @@ class NotifierService:
         Args:
             msg (func.QueueMessage): The message containing the job ID and check ID.
             job_id (str): The job ID for logging purposes.
+            check (Check): The check object containing email subject.
 
         Returns:
             str | None: The HTML table as a string, or None if an error occurs.
@@ -162,7 +129,7 @@ class NotifierService:
         if msg.get_json().get("combined_data_blob"):
             combined_data_blob = msg.get_json().get("combined_data_blob")
 
-            combined_data_container = NOTIFIER_CONTAINER_NAME
+            combined_data_container = config.NOTIFIER_CONTAINER_NAME
 
             storage_service: StorageService = StorageService()
 
