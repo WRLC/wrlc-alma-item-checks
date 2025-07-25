@@ -2,13 +2,13 @@
 from fastapi import FastAPI, Depends, APIRouter
 from typing import List
 from sqlalchemy.orm import Session
-from src.wrlc.alma.item_checks.api.dependencies import get_db
-from src.wrlc.alma.item_checks.api.models.check import Check, CheckCreate, CheckUpdate
-from src.wrlc.alma.item_checks.api.models.notification import Notification, NotificationCreate, NotificationUpdate
-from src.wrlc.alma.item_checks.api.models.user import User, UserCreate, UserUpdate
-from src.wrlc.alma.item_checks.repositories.check_repo import CheckRepository
-from src.wrlc.alma.item_checks.repositories.notification_repo import NotificationRepository
-from src.wrlc.alma.item_checks.repositories.user_repo import UserRepository
+from src.wrlc_alma_item_checks.api.dependencies import get_db
+from src.wrlc_alma_item_checks.api.models.check import Check, CheckCreate, CheckUpdate
+from src.wrlc_alma_item_checks.api.models.notification import Notification, NotificationCreate, NotificationUpdate
+from src.wrlc_alma_item_checks.api.models.user import User, UserCreate, UserUpdate
+from src.wrlc_alma_item_checks.repositories.check_repo import CheckRepository
+from src.wrlc_alma_item_checks.repositories.notification_repo import NotificationRepository
+from src.wrlc_alma_item_checks.repositories.user_repo import UserRepository
 
 # noinspection PyArgumentEqualDefault
 crud_api_app = FastAPI(

@@ -1,5 +1,5 @@
 """Dependencies for the database connection"""
-from src.wrlc.alma.item_checks.repositories.database import SessionMaker
+from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 
 
 def get_db():

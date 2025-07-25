@@ -1,6 +1,6 @@
 """Model for Notification."""
 from sqlalchemy.orm import Mapped, mapped_column
-from src.wrlc.alma.item_checks.models.base import Base
+from src.wrlc_alma_item_checks.models.base import Base
 
 
 class Notification(Base):

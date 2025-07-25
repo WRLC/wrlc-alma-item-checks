@@ -5,12 +5,12 @@ import logging
 import azure.functions as func
 # noinspection PyPackageRequirements
 from wrlc.alma.api_client.models.item import Item
-import src.wrlc.alma.item_checks.config as config
-from src.wrlc.alma.item_checks.handlers.scf_no_row_tray import SCFNoRowTray
-from src.wrlc.alma.item_checks.handlers.scf_shared import SCFShared
-from src.wrlc.alma.item_checks.handlers.scf_no_x import SCFNoX
-from src.wrlc.alma.item_checks.utils.security import validate_webhook_signature
-from src.wrlc.alma.item_checks.handlers.scf_withdrawn import SCFWithdrawn
+import src.wrlc_alma_item_checks.config as config
+from src.wrlc_alma_item_checks.handlers.scf_no_row_tray import SCFNoRowTray
+from src.wrlc_alma_item_checks.handlers.scf_shared import SCFShared
+from src.wrlc_alma_item_checks.handlers.scf_no_x import SCFNoX
+from src.wrlc_alma_item_checks.utils.security import validate_webhook_signature
+from src.wrlc_alma_item_checks.handlers.scf_withdrawn import SCFWithdrawn
 
 bp = func.Blueprint()
 

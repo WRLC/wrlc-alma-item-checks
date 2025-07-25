@@ -2,12 +2,12 @@
 import logging
 from sqlalchemy.orm import Session
 from wrlc.alma.api_client.models.item import Item
-from src.wrlc.alma.item_checks.models.check import Check
-import src.wrlc.alma.item_checks.config as config
-from src.wrlc.alma.item_checks.repositories.database import SessionMaker
-from src.wrlc.alma.item_checks.services.check_service import CheckService
-from src.wrlc.alma.item_checks.services.job_service import JobService
-from src.wrlc.alma.item_checks.services.storage_service import StorageService
+from src.wrlc_alma_item_checks.models.check import Check
+import src.wrlc_alma_item_checks.config as config
+from src.wrlc_alma_item_checks.repositories.database import SessionMaker
+from src.wrlc_alma_item_checks.services.check_service import CheckService
+from src.wrlc_alma_item_checks.services.job_service import JobService
+from src.wrlc_alma_item_checks.services.storage_service import StorageService
 
 NOTIFIER_QUEUE_NAME = config.NOTIFIER_QUEUE_NAME
 

@@ -20,13 +20,13 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from src.wrlc.alma.item_checks.models.base import Base
+from src.wrlc_alma_item_checks.models.base import Base
 # noinspection PyUnresolvedReferences
-from src.wrlc.alma.item_checks.models.check import Check
+from src.wrlc_alma_item_checks.models.check import Check
 # noinspection PyUnresolvedReferences
-from src.wrlc.alma.item_checks.models.notification import Notification
+from src.wrlc_alma_item_checks.models.notification import Notification
 # noinspection PyUnresolvedReferences
-from src.wrlc.alma.item_checks.models.user import User
+from src.wrlc_alma_item_checks.models.user import User
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 

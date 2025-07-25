@@ -1,7 +1,7 @@
 """FastAPI app blueprint for Azure Functions"""
 import azure.functions as func
 from azure.functions import AsgiMiddleware
-from src.wrlc.alma.item_checks.api.main import crud_api_app
+from src.wrlc_alma_item_checks.api.main import crud_api_app
 
 bp_api = func.Blueprint()
 

@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from wrlc.alma.api_client import AlmaApiClient
 from wrlc.alma.api_client.exceptions import AlmaApiError
 from wrlc.alma.api_client.models.item import Item
-import src.wrlc.alma.item_checks.config as config
-from src.wrlc.alma.item_checks.services.check_service import CheckService
-from src.wrlc.alma.item_checks.repositories.database import SessionMaker
-from src.wrlc.alma.item_checks.models.check import Check
+import src.wrlc_alma_item_checks.config as config
+from src.wrlc_alma_item_checks.services.check_service import CheckService
+from src.wrlc_alma_item_checks.repositories.database import SessionMaker
+from src.wrlc_alma_item_checks.models.check import Check
 
 PROVENANCE = config.PROVENANCE
 
