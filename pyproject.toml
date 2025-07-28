@@ -1,33 +1,26 @@
-[project]
+[tool.poetry]
 name = "wrlc-alma-item-checks"
 version = "0.1.0"
 description = "Azure Functions for WRLC Alma item checks."
-authors = [
-    {name = "Tom Boone", email = "boone@wrlc.org"}
-]
+authors = ["Tom Boone <boone@wrlc.org>"]
 readme = "README.md"
-requires-python = ">=3.12"
 license = "MIT"
-dependencies = [
-    "azure-functions >= 1.23.0,<2.0.0",
-    "pydantic >= 2.11.7,<3.0.0",
-    "sqlalchemy >=2.0.41,<3.0.0",
-    "alembic >=1.16.4,<2.0.0",
-    "python-dotenv >=1.1.1,<2.0.0",
-    "azure-storage-blob >=12.26.0,<13.0.0",
-    "azure-storage-queue >=12.13.0,<13.0.0",
-    "pandas >=2.3.1,<3.0.0",
-    "jinja2 >=3.1.6,<4.0.0",
-    "pymysql >=1.1.1,<2.0.0",
-    "fastapi >=0.116.1,<0.117.0",
-    "wrlc-alma-api-client >=0.1.0,<0.2.0"
-]
-
-[tool.poetry]
 package-mode = false
 
-[tool.poetry.group.dev.dependencies]
-wrlc-alma-api-client = { path = "../wrlc-alma-api-client", develop = true }
+[tool.poetry.dependencies]
+python = ">=3.12"
+azure-functions = ">= 1.23.0,<2.0.0"
+pydantic = ">= 2.11.7,<3.0.0"
+sqlalchemy = ">=2.0.41,<3.0.0"
+alembic = ">=1.16.4,<2.0.0"
+python-dotenv = ">=1.1.1,<2.0.0"
+azure-storage-blob = ">=12.26.0,<13.0.0"
+azure-storage-queue = ">=12.13.0,<13.0.0"
+pandas = ">=2.3.1,<3.0.0"
+jinja2 = ">=3.1.6,<4.0.0"
+pymysql = ">=1.1.1,<2.0.0"
+fastapi = ">=0.116.1,<0.117.0"
+wrlc-alma-api-client = { version = ">=0.1.0,<0.2.0" }
 
 [[tool.poetry.source]]
 name = "wrlc-python"
