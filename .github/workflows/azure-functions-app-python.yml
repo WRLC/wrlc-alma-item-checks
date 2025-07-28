@@ -32,7 +32,7 @@ jobs:
         poetry config http-basic.wrlc-python __token__ ${{ secrets.AZURE_DEVOPS_PAT }}
 
     - name: "Install dependencies"
-      run: poetry install --sync --no-root --without dev
+      run: poetry install --no-root
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1
