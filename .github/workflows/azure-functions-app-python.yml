@@ -13,6 +13,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     environment: Azure (stage)
+
     steps:
     - name: 'Checkout GitHub Action'
       uses: actions/checkout@v4
@@ -22,17 +23,16 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install Poetry
+    - name: 'Install Poetry'
       uses: snok/install-poetry@v1
 
-    - name: Install poetry-plugin-export
-      run: poetry self add poetry-plugin-export
+    - name: 'Configure Poetry for Azure Artifacts'
+      run: |
+        poetry source add --priority=primary wrlc-python https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
+        poetry config http-basic.wrlc-python __token__ ${{ secrets.AZURE_DEVOPS_PAT }}
 
-    - name: Install dependencies
-      run: poetry install
-
-    - name: Export dependencies to requirements.txt
-      run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+    - name: "Install dependencies"
+      run: poetry install --sync --no-root --no-dev
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1
@@ -41,5 +41,5 @@ jobs:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: true
-        enable-oryx-build: true
+        scm-do-build-during-deployment: false
+        enable-oryx-build: false
