@@ -20,44 +20,46 @@ from .storage_service import StorageService
 # noinspection PyMethodMayBeStatic
 class NotifierService:
     """Service for preparting and queuing notifications."""
+
+    def __init__(self):
+        # Initialize the Jinja2 environment once in the constructor for efficiency
+        self.jinja_env: Environment | None = None
+        try:
+            template_dir = pathlib.Path(__file__).parent.parent / "templates"
+            if not template_dir.is_dir():
+                logging.error(f"Jinja template directory not found at: {template_dir}")
+                raise FileNotFoundError(f"Jinja template directory not found: {template_dir}")
+
+            self.jinja_env = Environment(
+                loader=FileSystemLoader(template_dir),
+                autoescape=select_autoescape(['html', 'xml'])
+            )
+            logging.info(f"Jinja2 environment loaded successfully from: {template_dir}")
+        except Exception as e:
+            logging.exception(f"Failed to initialize Jinja2 environment: {e}")
+            # The service can continue, but render_email_body will fail gracefully.
+
     def render_email_body(
-            self, template: str, check: Check, body_addendum: str, html_table: str, job_id: str
+            self, template_name: str, check: Check, body_addendum: str, html_table: str, job_id: str
     ) -> str | None:
         """
         Render the email body using the provided template and context.
 
         Args:
-            template (str): The email template.
+            template_name (str): The name of the email template file.
             check (Check): The check object containing email subject and body.
             body_addendum (str): Additional text to append to the email body.
             html_table (str): The HTML table to include in the email body.
             job_id (str): The job ID for logging purposes.
 
         Returns:
-            str: The rendered email body.
+             The rendered email body as a string, or None on failure.
         """
-        # noinspection PyUnusedLocal
-        html_content_body: str = "Error rendering email template."
-
-        template_dir = pathlib.Path(__file__).parent.parent / "templates"
-        jinja_env: Environment | None = None
-
-        # noinspection PyBroadException
+        if not self.jinja_env:
+            logging.error(f"Job {job_id}: Cannot render email, Jinja2 environment not available.")
+            return None
         try:
-            if not template_dir.is_dir():
-                logging.error(f"Jinja template directory not found at: {template_dir}")
-                raise FileNotFoundError(f"Jinja template directory not found: {template_dir}")
-            else:
-                jinja_env = Environment(
-                    loader=FileSystemLoader(template_dir),
-                    autoescape=select_autoescape(['html', 'xml'])
-                )
-                logging.info(f"Jinja2 environment loaded successfully from: {template_dir}")
-        except Exception as e:
-            logging.exception(f"Failed to initialize Jinja2 environment from {template_dir}: {e}")
-
-        try:
-            template: Template = jinja_env.get_template(template)
+            template: Template = self.jinja_env.get_template(template_name)
             template_context = {
                 "email_caption": check.email_subject,
                 "email_body": check.email_body,
@@ -67,14 +69,13 @@ class NotifierService:
             }
             html_content_body: str = template.render(template_context)
             logging.debug(f"Job {job_id}: Email template rendered successfully.")
+            return html_content_body
         except TemplateNotFound as template_err:
             logging.error(f"Job {job_id}: Template not found: {template_err}", exc_info=True)
             return None
         except Exception as render_err:
             logging.error(f"Job {job_id}: Error rendering template: {render_err}", exc_info=True)
             return None
-
-        return html_content_body
 
     def send_email(self, email_message: EmailMessage, job_id: str) -> None:
         """

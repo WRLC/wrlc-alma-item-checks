@@ -5,7 +5,7 @@ import azure.functions as func
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.orm import Session
 
-from ..config import NOTIFIER_QUEUE_NAME, NOTIFIER_CONTAINER_NAME, TEMPLATE_FILE_NAME
+from ..config import NOTIFIER_QUEUE_NAME, TEMPLATE_FILE_NAME
 from ..repositories.check_repo import CheckRepository
 from ..repositories.database import SessionMaker
 from ..repositories.user_repo import UserRepository
@@ -28,57 +28,49 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
     Expected message format:
     {
         "job_id": "123456",
-        "check_id": "123456",
+        "check_id": 123,
         "combined_data_blob": "...",
         "email_body_addendum": "..."
     }
     """
     try:  # Get the job ID and check ID from the message
-        job_id: str = msg.get_json().get("job_id")
-        check_id: int = msg.get_json().get("check_id")
-    except ValueError as val_err:
-        logging.error(f"Missing job_id or check_id in JSON request: {val_err}")
+        message_data = msg.get_json()
+        job_id: str = message_data.get("job_id")
+        check_id: int = message_data.get("check_id")
+        if not all([job_id, check_id]):
+            raise ValueError("Message is missing 'job_id' or 'check_id'")
+    except (ValueError, AttributeError) as val_err:
+        logging.error(f"Invalid or malformed message received: {val_err}")
         return
-    except Exception as val_err:
-        logging.error(f"Unexpected error processing message: {val_err}", exc_info=True)
-        return
-
-    db: Session = SessionMaker()  # get database session
-
     try:
-        check_repo: CheckRepository = CheckRepository(db)  # get check repository
-        check: Check = check_repo.get_check_by_id(check_id)  # get check by id
+        # Use a 'with' statement for robust session management
+        with SessionMaker() as db:
+            check_repo: CheckRepository = CheckRepository(db)
+            check: Check = check_repo.get_check_by_id(check_id)
 
-        user_repo: UserRepository = UserRepository(db)  # get user repository
-        users: list[User] = user_repo.get_users_by_check_id(check_id)  # get users by check id
+            user_repo: UserRepository = UserRepository(db)
+            users: list[User] = user_repo.get_users_by_check_id(check_id)
     except NoResultFound:
-        logging.error(f"No check or user found for job {job_id}. Exiting.")
+        logging.warning(f"No users are subscribed to notifications for job {job_id}. Exiting.")
         return
-    except SQLAlchemyError as val_err:
-        logging.error(f"Job {job_id}: Database error: {val_err}")
-        return
-    except Exception as val_err:
-        logging.error(f"Job {job_id}: Unexpected error: {val_err}", exc_info=True)
-        return
-    finally:
-        db.close()  # close database session
 
     if not users:  # check if users exist
-        logging.error(f"No users found for job {job_id}. Exiting.")
+        logging.warning(f"No users are subscribed to notifications for job {job_id}. Exiting.")
         return
 
-    notifier_service: NotifierService = NotifierService()  # get notifier service
+    notifier_service: NotifierService = NotifierService()
 
-    html_table: str | None = notifier_service.create_html_table(  # create HTML table from JSON data
+    html_table: str | None = notifier_service.create_html_table(
         msg=msg,
         job_id=job_id,
         check=check
     )
+    # Get the addendum if it exists, otherwise it remains None
+    body_addendum: str | None = message_data.get("email_body_addendum")
 
-    body_addendum: str | None = None  # initialize email body addendum
-
-    if msg.get_json().get("email_body_addendum"):  # check if email body addendum exists)
-        body_addendum: str = msg.get_json().get("email_body_addendum")  # get email body addendum
+    if not html_table and not body_addendum:
+        logging.info(f"Job {job_id}: No data table or addendum to send. Skipping email.")
+        return
 
     html_content_body: str = notifier_service.render_email_body(  # render email body
         template=TEMPLATE_FILE_NAME,
@@ -87,6 +79,11 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
         html_table=html_table,
         job_id=job_id
     )
+
+    if not html_content_body:
+        logging.error(f"Job {job_id}: Failed to render email body. Aborting send.")
+        return
+
     email_to_send: EmailMessage = EmailMessage(
         to=[user.email for user in users],
         subject=check.email_subject,
