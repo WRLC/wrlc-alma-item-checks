@@ -34,19 +34,20 @@ class SCFShared:
             Item | None: the item data, if found, else None
 
         """
+        barcode = self.item.item_data.barcode
         if (  # Check if the item is not in a discard temporary location
                 self.item.holding_data.temp_location.value
                 and 'discard' in self.item.holding_data.temp_location.value.lower()
         ):
-            logging.info(f"Item is in a discard temporary location, skipping processing")
+            logging.info(f"Item {barcode} is in a discard temporary location, skipping processing")
             return None
 
         if 'discard' in self.item.item_data.location.value.lower():  # Check if the item is in a discard location
-            logging.info(f"Item is in a discard location, skipping processing")
+            logging.info(f"Item {barcode} is in a discard location, skipping processing")
             return None
 
         if not self.item.item_data.provenance or self.item.item_data.provenance.desc not in PROVENANCE:
-            logging.info(f"Item has no checked provenance, skipping processing")
+            logging.info(f"Item {barcode} has no checked provenance, skipping processing")
             return None
 
         # Get item by barcode to see if active
@@ -66,12 +67,12 @@ class SCFShared:
         try:
             item_data: Item = alma_client.items.get_item_by_barcode(self.item.item_data.barcode)
         except AlmaApiError as e:  # If there is an error retrieving the item from Alma, log a warning and return None
-            logging.info(f"Error retrieving item from Alma, skipping processing: {e}")
+            logging.warning(f"Error retrieving item {barcode} from Alma, skipping processing: {e}")
             return None
 
         # Check if the item was found
         if not item_data:
-            logging.info(f"Item not active in Alma, skipping processing")
+            logging.info(f"Item {barcode} not active in Alma, skipping processing")
             return None
 
         return item_data

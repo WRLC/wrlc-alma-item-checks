@@ -3,7 +3,6 @@ import logging
 
 import azure.functions as func
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
-from sqlalchemy.orm import Session
 
 from ..config import NOTIFIER_QUEUE_NAME, TEMPLATE_FILE_NAME
 from ..repositories.check_repo import CheckRepository
@@ -42,6 +41,7 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
     except (ValueError, AttributeError) as val_err:
         logging.error(f"Invalid or malformed message received: {val_err}")
         return
+
     try:
         # Use a 'with' statement for robust session management
         with SessionMaker() as db:
@@ -51,11 +51,15 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
             user_repo: UserRepository = UserRepository(db)
             users: list[User] = user_repo.get_users_by_check_id(check_id)
     except NoResultFound:
-        logging.warning(f"No users are subscribed to notifications for job {job_id}. Exiting.")
+        # This covers the case where the check doesn't exist, or no users are assigned.
+        logging.warning(f"Job {job_id}: No check found or no users are subscribed to notifications. Exiting.")
+        return
+    except SQLAlchemyError as db_err:
+        logging.error(f"Job {job_id}: Database error while fetching check/users: {db_err}", exc_info=True)
         return
 
-    if not users:  # check if users exist
-        logging.warning(f"No users are subscribed to notifications for job {job_id}. Exiting.")
+    if not users:
+        logging.warning(f"Job {job_id}: No users are subscribed to notifications. Exiting.")
         return
 
     notifier_service: NotifierService = NotifierService()
@@ -72,8 +76,9 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
         logging.info(f"Job {job_id}: No data table or addendum to send. Skipping email.")
         return
 
-    html_content_body: str = notifier_service.render_email_body(  # render email body
-        template=TEMPLATE_FILE_NAME,
+    # Corrected keyword argument from 'template' to 'template_name'
+    html_content_body: str = notifier_service.render_email_body(
+        template_name=TEMPLATE_FILE_NAME,
         check=check,
         body_addendum=body_addendum,
         html_table=html_table,
