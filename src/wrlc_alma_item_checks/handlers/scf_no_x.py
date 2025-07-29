@@ -1,16 +1,14 @@
 """Fixes SCF NoX events."""
 import logging
 from sqlalchemy.orm import Session
-from wrlc.alma.api_client import AlmaApiClient
-from wrlc.alma.api_client.models.item import Item
-from src.wrlc_alma_item_checks import config
+from wrlc_alma_api_client import AlmaApiClient
+from wrlc_alma_api_client.models.item import Item
+from src.wrlc_alma_item_checks.config import NOTIFIER_QUEUE_NAME
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 from src.wrlc_alma_item_checks.services.check_service import CheckService
 from src.wrlc_alma_item_checks.services.job_service import JobService
 from src.wrlc_alma_item_checks.services.storage_service import StorageService
-
-NOTIFIER_QUEUE_NAME: str = config.NOTIFIER_QUEUE_NAME
 
 
 class SCFNoX:
@@ -62,7 +60,7 @@ class SCFNoX:
             logging.error(f'ScfNoX: Check "{check_name}" does not exist. Exiting')
             return
 
-        alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')  # get Alma client
+        alma_client: AlmaApiClient = AlmaApiClient(api_key=check.api_key, region='NA')  # get Alma client
 
         self.item.item_data.barcode += 'X'  # Update the barcode
 

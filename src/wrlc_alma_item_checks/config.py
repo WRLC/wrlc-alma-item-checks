@@ -5,6 +5,7 @@ SQLALCHEMY_CONNECTION_STRING: str = os.getenv("SQLALCHEMY_CONNECTION_STRING", "s
 
 NOTIFIER_QUEUE_NAME: str = os.getenv("NOTIFIER_QUEUE_NAME", "alma-item-checks-input-queue")
 NOTIFIER_CONTAINER_NAME: str = os.getenv("NOTIFIER_CONTAINER_NAME", "alma-item-checks-input-container")
+TEMPLATE_FILE_NAME = "email_template.html.j2"
 
 ACS_SENDER_CONTAINER_NAME: str = os.getenv("ACS_SENDER_CONTAINER_NAME")
 ACS_SENDER_CONNECTION_STRING: str = os.getenv("ACS_SENDER_CONNECTION_STRING")

@@ -1,11 +1,11 @@
 """Blueprint for Alma Item Update Webhook."""
 import json
 import logging
-# noinspection PyPackageRequirements
+
 import azure.functions as func
-# noinspection PyPackageRequirements
-from wrlc.alma.api_client.models.item import Item
-import src.wrlc_alma_item_checks.config as config
+from wrlc_alma_api_client.models.item import Item
+
+from src.wrlc_alma_item_checks.config import SCF_WEBHOOK_SECRET
 from src.wrlc_alma_item_checks.handlers.scf_no_row_tray import SCFNoRowTray
 from src.wrlc_alma_item_checks.handlers.scf_shared import SCFShared
 from src.wrlc_alma_item_checks.handlers.scf_no_x import SCFNoX
@@ -37,7 +37,7 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Hello World", status_code=200)
 
     # ----- Validate Signature ----- #
-    if not validate_webhook_signature(req.get_body(), config.SCF_WEBHOOK_SECRET, req.headers.get("X-Exl-Signature")):
+    if not validate_webhook_signature(req.get_body(), SCF_WEBHOOK_SECRET, req.headers.get("X-Exl-Signature")):
         return func.HttpResponse("Invalid signature", status_code=401)
 
     # ----- Parse Item ----- #

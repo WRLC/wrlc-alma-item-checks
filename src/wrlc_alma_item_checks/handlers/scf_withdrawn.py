@@ -1,7 +1,7 @@
 """SCFWithdrawn class to handle SCF WD events"""
 import logging
 from sqlalchemy.orm import Session
-from wrlc.alma.api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item
 from src.wrlc_alma_item_checks.models.check import Check
 import src.wrlc_alma_item_checks.config as config
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
