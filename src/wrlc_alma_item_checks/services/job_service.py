@@ -2,7 +2,7 @@
 import datetime
 import uuid
 
-from src.wrlc_alma_item_checks.models.check import Check
+from ..models.check import Check
 
 
 # noinspection PyMethodMayBeStatic

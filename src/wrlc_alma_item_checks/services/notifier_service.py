@@ -9,12 +9,12 @@ from azure.storage.blob import BlobClient
 from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, select_autoescape
 import pandas as pd
 
-from src.wrlc_alma_item_checks.config import (
+from ..config import (
     NOTIFIER_CONTAINER_NAME, ACS_SENDER_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME
 )
-from src.wrlc_alma_item_checks.models.check import Check
-from src.wrlc_alma_item_checks.models.email import EmailMessage
-from src.wrlc_alma_item_checks.services.storage_service import StorageService
+from ..models.check import Check
+from ..models.email import EmailMessage
+from .storage_service import StorageService
 
 
 # noinspection PyMethodMayBeStatic

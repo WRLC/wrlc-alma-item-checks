@@ -6,7 +6,7 @@ from sqlalchemy import Select
 from sqlalchemy.exc import NoResultFound, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.wrlc_alma_item_checks.models.check import Check as SQLAlchemyCheckModel
+from ..models.check import Check as SQLAlchemyCheckModel
 
 
 class CheckRepository:
