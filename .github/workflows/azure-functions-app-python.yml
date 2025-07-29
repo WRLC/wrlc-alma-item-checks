@@ -1,3 +1,4 @@
+#file: noinspection UndefinedAction
 name: Deploy to Azure Function
 
 on:
@@ -10,12 +11,11 @@ env:
   PYTHON_VERSION: '3.12'
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment: Azure (stage)
 
     steps:
-    - name: 'Checkout GitHub Action'
+    - name: Checkout GitHub Action
       uses: actions/checkout@v4
 
     - name: Setup Python ${{ env.PYTHON_VERSION }} Environment
@@ -23,25 +23,36 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: 'Install Poetry'
+    - name: Install Poetry
       uses: snok/install-poetry@v1
 
-    - name: 'Configure Poetry for Azure Artifacts'
-      run: |
-        poetry source add --priority=primary wrlc-python https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
-        poetry config http-basic.wrlc-python __token__ ${{ secrets.AZURE_DEVOPS_PAT }}
+    - name: Install poetry export plugin
+      run: poetry self add poetry-plugin-export
 
-    - name: "Install dependencies and package for Azure"
-      run: |
-        poetry install
-        poetry run pip install --target="./.python_packages/lib/site-packages" .
+    - name: Export to requirements.txt
+      run: poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-    - name: 'Run Azure Functions Action'
+    - name: Configure pip for private feed
+      run: |
+        echo "[global]" > pip.conf
+        echo "extra-index-url = https://azuredevops:${{ secrets.AZURE_ARTIFACTS_PAT }}@pkgs.dev.azure.com/your_organization_name/_packaging/your_feed_name/pypi/simple/" >> pip.conf
+
+        mkdir -p ~/.pip/
+        mv pip.conf ~/.pip/pip.conf
+        
+        echo "pip.conf configured successfully:"
+        cat ~/.pip/pip.conf
+
+    - name: Install dependencies (including private ones)
+      run: pip install -r requirements.txt
+
+
+    - name: Run Azure Functions Action
       uses: Azure/functions-action@v1
       id: fa
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: false
-        enable-oryx-build: false
+        scm-do-build-during-deployment: true
+        enable-oryx-build: true
