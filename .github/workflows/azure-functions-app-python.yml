@@ -35,7 +35,7 @@ jobs:
     - name: Configure pip for private feed
       run: |
         echo "[global]" > pip.conf
-        echo "extra-index-url = https://${{ secrets.AZURE_ARTIFACTS_PAT }}@pkgs.dev.azure.com/your_organization_name/_packaging/your_feed_name/pypi/simple/" >> pip.conf
+        echo "extra-index-url = https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/your_organization_name/_packaging/your_feed_name/pypi/simple/" >> pip.conf
 
         mkdir -p ~/.pip/
         mv pip.conf ~/.pip/pip.conf
