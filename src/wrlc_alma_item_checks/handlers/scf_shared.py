@@ -1,9 +1,9 @@
 """SCFShared class to handle shared SCF Item checks"""
 import logging
 from sqlalchemy.orm import Session
-from wrlc.alma.api_client import AlmaApiClient
-from wrlc.alma.api_client.exceptions import AlmaApiError
-from wrlc.alma.api_client.models.item import Item
+from wrlc_alma_api_client import AlmaApiClient
+from wrlc_alma_api_client.exceptions import AlmaApiError
+from wrlc_alma_api_client.models.item import Item
 import src.wrlc_alma_item_checks.config as config
 from src.wrlc_alma_item_checks.services.check_service import CheckService
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker

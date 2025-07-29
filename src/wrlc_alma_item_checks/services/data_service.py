@@ -1,5 +1,4 @@
 """Data serialization and formatting utilities."""
-
 import re
 import json
 import datetime

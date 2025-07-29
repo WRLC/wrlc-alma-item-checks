@@ -5,20 +5,16 @@ import azure.functions as func
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.orm import Session
 
-import src.wrlc_alma_item_checks.config as config
+from src.wrlc_alma_item_checks.config import NOTIFIER_QUEUE_NAME, NOTIFIER_CONTAINER_NAME, TEMPLATE_FILE_NAME
 from src.wrlc_alma_item_checks.repositories.check_repo import CheckRepository
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 from src.wrlc_alma_item_checks.repositories.user_repo import UserRepository
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.models.user import User
 from src.wrlc_alma_item_checks.services.notifier_service import NotifierService
-from wrlc_alma_item_checks.models.email import EmailMessage
+from src.wrlc_alma_item_checks.models.email import EmailMessage
 
 bp = func.Blueprint()
-
-NOTIFIER_QUEUE_NAME: str = config.NOTIFIER_QUEUE_NAME
-NOTIFIER_CONTAINER_NAME: str = config.NOTIFIER_CONTAINER_NAME
-TEMPLATE_FILE_NAME = "email_template.html.j2"
 
 
 @bp.queue_trigger(queue_name=NOTIFIER_QUEUE_NAME, connection="AzureWebJobsStorage", arg_name="msg")

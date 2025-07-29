@@ -9,7 +9,9 @@ from azure.storage.blob import BlobClient
 from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, select_autoescape
 import pandas as pd
 
-from src.wrlc_alma_item_checks import config
+from src.wrlc_alma_item_checks.config import (
+    NOTIFIER_CONTAINER_NAME, ACS_SENDER_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME
+)
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.models.email import EmailMessage
 from src.wrlc_alma_item_checks.services.storage_service import StorageService
@@ -83,10 +85,7 @@ class NotifierService:
             job_id (str): The job ID for logging purposes.
 
         """
-        conn_str = config.ACS_SENDER_CONNECTION_STRING
-        container_name = config.ACS_SENDER_CONTAINER_NAME
-
-        if not all([conn_str, container_name]):
+        if not all([ACS_SENDER_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME]):
             logging.error(
                 f"Job {job_id}: ACS sender connection string or container name is not configured. "
                 "Cannot create email blob."
@@ -97,10 +96,10 @@ class NotifierService:
             blob_name = f"{job_id}-{uuid.uuid4()}.json"
             email_json_content = email_message.model_dump_json()
 
-            logging.info(f"Job {job_id}: Uploading email content to blob '{container_name}/{blob_name}'.")
+            logging.info(f"Job {job_id}: Uploading email content to blob '{ACS_SENDER_CONTAINER_NAME}/{blob_name}'.")
             blob_client = BlobClient.from_connection_string(
-                conn_str=conn_str,
-                container_name=container_name,
+                conn_str=ACS_SENDER_CONNECTION_STRING,
+                container_name=ACS_SENDER_CONTAINER_NAME,
                 blob_name=blob_name
             )
 
@@ -129,7 +128,7 @@ class NotifierService:
         if msg.get_json().get("combined_data_blob"):
             combined_data_blob = msg.get_json().get("combined_data_blob")
 
-            combined_data_container = config.NOTIFIER_CONTAINER_NAME
+            combined_data_container = NOTIFIER_CONTAINER_NAME
 
             storage_service: StorageService = StorageService()
 

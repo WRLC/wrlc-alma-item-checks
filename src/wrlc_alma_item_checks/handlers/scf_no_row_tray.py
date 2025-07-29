@@ -1,18 +1,16 @@
 """Fixes SCF No Row/Tray events"""
 import logging
 import re
+
 from sqlalchemy.orm import Session
-from wrlc.alma.api_client.models.item import Item
-import src.wrlc_alma_item_checks.config as config
+from wrlc_alma_api_client.models.item import Item
+
+from src.wrlc_alma_item_checks.config import EXCLUDED_NOTES, SKIP_LOCATIONS, NOTIFIER_QUEUE_NAME
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 from src.wrlc_alma_item_checks.services.check_service import CheckService
 from src.wrlc_alma_item_checks.services.job_service import JobService
 from src.wrlc_alma_item_checks.services.storage_service import StorageService
-
-NOTIFIER_QUEUE_NAME = config.NOTIFIER_QUEUE_NAME
-EXCLUDED_NOTES = config.EXCLUDED_NOTES
-SKIP_LOCATIONS = config.SKIP_LOCATIONS
 
 
 class SCFNoRowTray:
@@ -28,9 +26,8 @@ class SCFNoRowTray:
             item (Item): The Item data
 
         """
-        self.item = item
-        self.check_service = CheckService
-        self.job_service = JobService()
+        self.item: Item = item
+        self.job_service: JobService = JobService()
 
     def should_process(self) -> bool:
         """
@@ -72,15 +69,15 @@ class SCFNoRowTray:
 
         job_id: str = self.job_service.generate_job_id(check)  # create job ID
 
-        title = self.item.bib_data.title if self.item.bib_data.title else 'None'
-        author = self.item.bib_data.author if self.item.bib_data.author else 'None'
-        barcode = self.item.item_data.barcode if self.item.item_data.barcode else 'None'
-        call_number = self.item.item_data.alternative_call_number if self.item.item_data.alternative_call_number \
+        title: str = self.item.bib_data.title if self.item.bib_data.title else 'None'
+        author: str = self.item.bib_data.author if self.item.bib_data.author else 'None'
+        barcode: str = self.item.item_data.barcode if self.item.item_data.barcode else 'None'
+        call_number: str = self.item.item_data.alternative_call_number if self.item.item_data.alternative_call_number \
             else 'None'
-        internal_note_1 = self.item.item_data.internal_note_1 if self.item.item_data.internal_note_1 else 'None'
+        internal_note_1: str = self.item.item_data.internal_note_1 if self.item.item_data.internal_note_1 else 'None'
 
         # Create item HTML table for the email
-        addendum_table = f"""
+        addendum_table: str = f"""
             <table>
                 <caption>{check.email_subject}</caption>
                 <thead>
@@ -104,7 +101,7 @@ class SCFNoRowTray:
             </table>
         """
 
-        storage_service = StorageService()  # Get storage service
+        storage_service: StorageService = StorageService()  # Get storage service
 
         storage_service.send_queue_message(  # Send message to notifier queue
             NOTIFIER_QUEUE_NAME,
@@ -118,31 +115,58 @@ class SCFNoRowTray:
 
     def no_row_tray_data(self) -> bool:
         """
-        Check if row/tray data is missing
+        Check if row/tray data is missing from alternative call number.
+
+        Returns:
+            bool: True if row/tray data is missing, False otherwise
         """
-        alt_call_number = self.item.item_data.alternative_call_number
-        internal_note_1 = self.item.item_data.internal_note_1
+        alt_call_number: str | None = self.item.item_data.alternative_call_number
 
-        if alt_call_number is not None and internal_note_1 is not None:
-            logging.info('SCFNoRowTray.no_row_tray_data: Call number and internal note 1 exist, skipping processing')
-            return False  # if both item call # and internal note 1 exist, skip processing
+        if alt_call_number is None:
+            logging.info('SCFNoRowTray.no_row_tray_data: Alternative Call Number is not set. Processing.')
+            return True
 
-        return True
+        logging.info(f'SCFNoRowTray.no_row_tray_data: Alternative Call Number {alt_call_number} is set. Skipping.')
+        return False
 
     def wrong_row_tray_data(self) -> bool:
         """
         Check if row/tray data is in wrong format and not in a skipped location
+
+        Returns:
+            bool: True if row/tray data is in wrong format, False otherwise
         """
-        alt_call_number = self.item.item_data.alternative_call_number
-        pattern = r"^R.*M.*S"  # regex for correct row/tray data format
 
-        if re.search(pattern, alt_call_number) is not None:  # if call number in correct format, skip processing
-            logging.info('SCFNoRowTray.wrong_row_tray_data: Alt Call Number in correct format, skipping processing')
-            return False
+        fields_to_check: list[dict[str, str]] = [
+            {
+                "label": "Alt Call Number",
+                "value": self.item.item_data.alternative_call_number
+            },
+            {
+                "label": "Internal Note 1",
+                "value": self.item.item_data.internal_note_1
+            }
+        ]
 
-        for location in SKIP_LOCATIONS:  # if any skip location is in call number, skip processing
-            if location in alt_call_number:
-                logging.info('SCFNoRowTray.wrong_row_tray_data: Item in skipped location, skipping processing')
-                return False
+        pattern: str = r"^R.*M.*S"  # regex for correct row/tray data format
 
-        return True
+        for field in fields_to_check:  # check both fields
+
+            field_value: str | None = field.get('value')
+
+            if field_value is not None:  # only process if the field has value set
+
+                if any(loc in field_value for loc in SKIP_LOCATIONS):  # check if call number in a skipped location
+                    logging.info(
+                        f'SCFNoRowTray.wrong_row_tray_data: Skipping field with value "{field_value}" '
+                        f'because it contains a skipped location.')
+                    continue
+
+                if re.search(pattern, field_value) is None:  # check if call number matches correct format
+                    logging.info(
+                        f'SCFNoRowTray.wrong_row_tray_data: {field.get("label")} in incorrect format. Processing.'
+                    )
+                    return True
+
+        logging.info('SCFNoRowTray.wrong_row_tray_data: All set fields in correct format. Skipping.')
+        return False
