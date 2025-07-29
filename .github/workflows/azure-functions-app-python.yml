@@ -31,8 +31,10 @@ jobs:
         poetry source add --priority=primary wrlc-python https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
         poetry config http-basic.wrlc-python __token__ ${{ secrets.AZURE_DEVOPS_PAT }}
 
-    - name: "Install dependencies"
-      run: poetry install
+    - name: "Install dependencies and package for Azure"
+      run: |
+        poetry install --no-dev
+        poetry run pip install --target="./.python_packages/lib/site-packages" .
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1

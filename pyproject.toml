@@ -5,7 +5,7 @@ description = "Azure Functions for WRLC Alma item checks."
 authors = ["Tom Boone <boone@wrlc.org>"]
 readme = "README.md"
 license = "MIT"
-package-mode = false
+packages = [{include = "wrlc_alma_item_checks", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.12"
