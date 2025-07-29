@@ -36,7 +36,7 @@ jobs:
       run: |
         pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
         poetry run python -m pip install --upgrade pip
-        poetry run pip install -r requirements.txt --target=".python_packages/lib/site-packages" --extra-index-url "https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/"
+        poetry run pip install -r requirements.txt --target=".python_packages/lib/site-packages" --extra-index-url https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple
         popd
 
     - name: Upload artifact for deployment
