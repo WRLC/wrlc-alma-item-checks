@@ -39,7 +39,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt \
           --target=".python_packages/lib/site-packages" \
-          --extra-index-url https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/your_organization_name/_packaging/your_feed_name/pypi/simple/
+          --extra-index-url https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/_packaging/wrlc-python/pypi/simple/
         popd
 
     - name: Run Azure Functions Action
