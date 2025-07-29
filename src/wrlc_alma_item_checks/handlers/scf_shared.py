@@ -25,7 +25,6 @@ class SCFShared:
 
         """
         self.item = item
-        self.check_service = CheckService
 
     def should_process(self) -> Item | None:
         """
@@ -46,19 +45,20 @@ class SCFShared:
             logging.info(f"Item is in a discard location, skipping processing")
             return None
 
-        if self.item.item_data.provenance.desc not in PROVENANCE:  # Check if the item has a checked provenance
+        if not self.item.item_data.provenance or self.item.item_data.provenance.desc not in PROVENANCE:
             logging.info(f"Item has no checked provenance, skipping processing")
             return None
 
         # Get item by barcode to see if active
         check_name: str = "ScfShared"  # get check name
 
-        db: Session = SessionMaker()  # get database session
+        with SessionMaker() as db:
+            check_service: CheckService = CheckService(db)
+            check: Check = check_service.get_check_by_name(check_name)
 
-        check_service: CheckService = CheckService(db)  # get check service
-        check: Check = check_service.get_check_by_name(check_name)  # get check by name
-
-        db.close()  # close database session
+        if not check or not check.api_key:
+            logging.error(f"Could not find check '{check_name}' or it has no API key. Cannot proceed.")
+            return None
 
         # Retrieve the item from Alma using the barcode
         alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')

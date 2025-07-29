@@ -34,12 +34,9 @@ def ScfDuplicatesTimer(scfduptimer: func.TimerRequest) -> None:
 
     logging.info(f'Python timer trigger function initiating job for "{check_name}".')
 
-    db: Session = SessionMaker()  # get database session
-
-    check_service: CheckService = CheckService(db)  # get check service
-    check: Check = check_service.get_check_by_name(check_name)  # get check by name
-
-    db.close()  # close database session
+    with SessionMaker() as db:
+        check_service: CheckService = CheckService(db)
+        check: Check = check_service.get_check_by_name(check_name)
 
     if not check:  # check if check exists
         logging.info(f'Check "{check_name}" does not exist. Exiting')
@@ -56,7 +53,7 @@ def ScfDuplicatesTimer(scfduptimer: func.TimerRequest) -> None:
         logging.error(f"Job {job_id}: Error retrieving report: {e}")
         return
 
-    if len(report.rows) == 0:  # check if report is empty
+    if not report.rows:
         logging.info(f"Job {job_id}: No results found.")
         return
 
