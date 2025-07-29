@@ -5,14 +5,14 @@ import azure.functions as func
 from sqlalchemy.exc import SQLAlchemyError, NoResultFound
 from sqlalchemy.orm import Session
 
-from src.wrlc_alma_item_checks.config import NOTIFIER_QUEUE_NAME, NOTIFIER_CONTAINER_NAME, TEMPLATE_FILE_NAME
-from src.wrlc_alma_item_checks.repositories.check_repo import CheckRepository
-from src.wrlc_alma_item_checks.repositories.database import SessionMaker
-from src.wrlc_alma_item_checks.repositories.user_repo import UserRepository
-from src.wrlc_alma_item_checks.models.check import Check
-from src.wrlc_alma_item_checks.models.user import User
-from src.wrlc_alma_item_checks.services.notifier_service import NotifierService
-from src.wrlc_alma_item_checks.models.email import EmailMessage
+from ..config import NOTIFIER_QUEUE_NAME, NOTIFIER_CONTAINER_NAME, TEMPLATE_FILE_NAME
+from ..repositories.check_repo import CheckRepository
+from ..repositories.database import SessionMaker
+from ..repositories.user_repo import UserRepository
+from ..models.check import Check
+from ..models.user import User
+from ..services.notifier_service import NotifierService
+from ..models.email import EmailMessage
 
 bp = func.Blueprint()
 

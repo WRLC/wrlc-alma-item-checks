@@ -6,14 +6,14 @@ from sqlalchemy.orm import Session
 from wrlc_alma_api_client import AlmaApiClient
 from wrlc_alma_api_client.models import AnalyticsReportResults
 
-from src.wrlc_alma_item_checks.config import (
+from ..config import (
     SCF_DUPLICATES_SCHEDULE, SCF_DUPLICATES_CHECK_NAME, NOTIFIER_CONTAINER_NAME, NOTIFIER_QUEUE_NAME
 )
-from src.wrlc_alma_item_checks.models.check import Check
-from src.wrlc_alma_item_checks.repositories.database import SessionMaker
-from src.wrlc_alma_item_checks.services.check_service import CheckService
-from src.wrlc_alma_item_checks.services.job_service import JobService
-from src.wrlc_alma_item_checks.services.storage_service import StorageService
+from ..models.check import Check
+from ..repositories.database import SessionMaker
+from ..services.check_service import CheckService
+from ..services.job_service import JobService
+from ..services.storage_service import StorageService
 
 bp = func.Blueprint()
 
