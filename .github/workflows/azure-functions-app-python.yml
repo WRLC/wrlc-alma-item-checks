@@ -32,17 +32,15 @@ jobs:
     - name: Export to requirements.txt
       run: poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-    - name: Configure pip for private feed
+    - name: 'Resolve Project Dependencies Using Pip'
+      shell: bash
       run: |
-        echo "[global]" > pip.conf
-        echo "extra-index-url = https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/your_organization_name/_packaging/your_feed_name/pypi/simple/" >> pip.conf
-
-        mkdir -p ~/.pip/
-        mv pip.conf ~/.pip/pip.conf
-        
-        echo "pip.conf configured successfully:"
-        cat ~/.pip/pip.conf
-
+        pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt \
+          --target=".python_packages/lib/site-packages" \
+          --extra-index-url https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/your_organization_name/_packaging/your_feed_name/pypi/simple/
+        popd
 
     - name: Run Azure Functions Action
       uses: Azure/functions-action@v1
@@ -51,5 +49,5 @@ jobs:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: true
-        enable-oryx-build: true
+        scm-do-build-during-deployment: false
+        enable-oryx-build: false
