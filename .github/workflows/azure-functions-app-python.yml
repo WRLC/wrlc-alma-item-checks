@@ -27,6 +27,8 @@ jobs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
+        # Add this line to clear the cache before installing
+        python -m pip cache purge
         pip install . \
           --target=".python_packages/lib/site-packages" \
           --extra-index-url "https://azuredevops:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/"
