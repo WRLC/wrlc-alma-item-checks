@@ -30,6 +30,13 @@ SCF_DUPLICATES_CHECK_NAME: str = _get_required_env("SCF_DUPLICATES_CHECK_NAME")
 # --- SCF Webhook (Required for the webhook) ---
 SCF_WEBHOOK_SECRET: str = _get_required_env("SCF_WEBHOOK_SECRET")
 
+# Disable email
+DISABLE_EMAIL: bool = False
+disable_email_setting: str | None = os.environ.get("DISABLE_EMAIL")
+
+if disable_email_setting and disable_email_setting.strip().lower() in ("true", "1", "yes", "on"):
+    DISABLE_EMAIL = True
+
 # --- Business Logic Constants ---
 PROVENANCE = [
     'Property of American University',
