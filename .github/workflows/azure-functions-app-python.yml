@@ -31,6 +31,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt --target=".python_packages/lib/site-packages"
         popd
+      env:
+        PIP_INDEX_URL: https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
+        PIP_TRUSTED_HOST: pkgs.dev.azure.com
 
     - name: 'Run Azure Functions Action'
       uses: Azure/functions-action@v1
