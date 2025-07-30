@@ -1,22 +1,35 @@
 """Configuration for the Alma Item Checks application."""
 import os
 
-STORAGE_CONNECTION_STRING: str = os.getenv("AzureWebJobsStorage")
 
-SQLALCHEMY_CONNECTION_STRING: str = os.getenv("SQLALCHEMY_CONNECTION_STRING", "sqlite:///alma_item_checks.db")
+def _get_required_env(var_name: str) -> str:
+    """Gets a required environment variable or raises a ValueError."""
+    value = os.getenv(var_name)
+    if value is None:
+        raise ValueError(f"Missing required environment variable: '{var_name}'")
+    return value
 
-NOTIFIER_QUEUE_NAME: str = os.getenv("NOTIFIER_QUEUE_NAME", "alma-item-checks-input-queue")
-NOTIFIER_CONTAINER_NAME: str = os.getenv("NOTIFIER_CONTAINER_NAME", "alma-item-checks-input-container")
+
+# --- Core Application Settings (Required) ---
+STORAGE_CONNECTION_STRING: str = _get_required_env("AzureWebJobsStorage")
+SQLALCHEMY_CONNECTION_STRING: str = _get_required_env("SQLALCHEMY_CONNECTION_STRING")
+
+# --- Notifier Settings (Required for notifier functionality) ---
+NOTIFIER_QUEUE_NAME: str = _get_required_env("NOTIFIER_QUEUE_NAME")
+NOTIFIER_CONTAINER_NAME: str = _get_required_env("NOTIFIER_CONTAINER_NAME")
 TEMPLATE_FILE_NAME = "email_template.html.j2"
 
-ACS_SENDER_CONTAINER_NAME: str = os.getenv("ACS_SENDER_CONTAINER_NAME")
-ACS_SENDER_CONNECTION_STRING: str = os.getenv("ACS_SENDER_CONNECTION_STRING")
+# --- Azure Communication Services (Required for sending emails) ---
+ACS_SENDER_CONTAINER_NAME: str = _get_required_env("ACS_SENDER_CONTAINER_NAME")
 
-SCF_DUPLICATES_SCHEDULE: str = os.getenv("SCF_DUPLICATES_SCHEDULE")
-SCF_DUPLICATES_CHECK_NAME: str = os.getenv("SCF_DUPLICATES_CHECK_NAME")
+# --- SCF Duplicates Timer (Required for the timer trigger) ---
+SCF_DUPLICATES_SCHEDULE: str = _get_required_env("SCF_DUPLICATES_SCHEDULE")
+SCF_DUPLICATES_CHECK_NAME: str = _get_required_env("SCF_DUPLICATES_CHECK_NAME")
 
-SCF_WEBHOOK_SECRET: str = os.getenv("SCF_WEBHOOK_SECRET")
+# --- SCF Webhook (Required for the webhook) ---
+SCF_WEBHOOK_SECRET: str = _get_required_env("SCF_WEBHOOK_SECRET")
 
+# --- Business Logic Constants ---
 PROVENANCE = [
     'Property of American University',
     'Property of American University Law School',
