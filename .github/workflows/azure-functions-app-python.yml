@@ -6,13 +6,14 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'alma-item-checks'
+  AZURE_FUNCTIONAPP_NAME: 'your-function-app-name'
   AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
   PYTHON_VERSION: '3.12'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: Azure (stage)
 
     steps:
     - name: 'Checkout GitHub Action'
@@ -22,16 +23,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-
-    - name: 'Configure pip for Azure DevOps feed'
-      run: |
-        mkdir -p ~/.config/pip
-        
-        cat > ~/.config/pip/pip.conf << EOF
-        [global]
-        extra-index-url = https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
-        trusted-host = pkgs.dev.azure.com
-        EOF
 
     - name: 'Install Poetry'
       uses: snok/install-poetry@v1
@@ -62,9 +53,7 @@ jobs:
     - name: 'Generate requirements.txt'
       run: |
         poetry export -f requirements.txt --output requirements.txt --without-hashes
-        
-        sed -i '1i--extra-index-url https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/' requirements.txt
-        sed -i '2i--trusted-host pkgs.dev.azure.com' requirements.txt
+        sed -i '/^--index-url/d' requirements.txt
 
     - name: 'Create deployment package'
       run: |
@@ -75,6 +64,9 @@ jobs:
         find . -type f -name "*.pyc" -delete
         
         pip install -r requirements.txt --target .python_packages/lib/site-packages
+      env:
+        PIP_INDEX_URL: https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
+        PIP_TRUSTED_HOST: pkgs.dev.azure.com
 
     - name: 'Deploy to Azure Functions'
       uses: Azure/functions-action@v1
