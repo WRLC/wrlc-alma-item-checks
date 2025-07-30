@@ -53,7 +53,7 @@ jobs:
 
     - name: 'Install dependencies with Poetry'
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-interaction --no-dev
+      run: poetry install --no-interaction
 
     - name: 'Generate requirements.txt'
       run: |
