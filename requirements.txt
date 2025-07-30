@@ -1,5 +1,3 @@
---index-url https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple
-
 alembic==1.16.4 ; python_version >= "3.12"
 annotated-types==0.7.0 ; python_version >= "3.12"
 anyio==4.9.0 ; python_version >= "3.12"
