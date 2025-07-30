@@ -1,9 +1,9 @@
-#file: noinspection UndefinedAction
-name: Deploy to Azure Function
+name: Deploy Python Azure Function
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main ]
+  workflow_dispatch:
 
 env:
   AZURE_FUNCTIONAPP_NAME: 'alma-item-checks'
@@ -11,34 +11,72 @@ env:
   PYTHON_VERSION: '3.12'
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: Azure (stage)
 
     steps:
-    - name: Checkout GitHub Action
+    - name: 'Checkout GitHub Action'
       uses: actions/checkout@v4
 
-    - name: Setup Python ${{ env.PYTHON_VERSION }} Environment
+    - name: 'Setup Python ${{ env.PYTHON_VERSION }} Environment'
       uses: actions/setup-python@v4
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install Poetry
+    - name: 'Configure pip for Azure DevOps feed'
+      run: |
+        mkdir -p ~/.config/pip
+        cat > ~/.config/pip/pip.conf << EOF
+        [global]
+        extra-index-url = https://${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
+        trusted-host = pkgs.dev.azure.com
+        EOF
+
+    - name: 'Install Poetry'
       uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
 
-    - name: Install Poetry Export plugin
-      run: poetry self add poetry-plugin-export
+    - name: 'Configure Poetry for Azure DevOps feed'
+      run: |
+        poetry config repositories.azure-devops https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
+        poetry config http-basic.azure-devops ${{ secrets.AZURE_DEVOPS_PAT }} ${{ secrets.AZURE_DEVOPS_PAT }}
 
-    - name: Export dependencies to requirements.txt
-      run: poetry export -f requirements.txt --output requirements.txt --without-hashes
+    - name: 'Load cached venv'
+      id: cached-poetry-dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
-    - name: Run Azure Functions Action
+    - name: 'Install dependencies with Poetry'
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-dev
+
+    - name: 'Generate requirements.txt'
+      run: |
+        poetry export -f requirements.txt --output requirements.txt --without-hashes
+        
+        sed -i '1i--extra-index-url https://${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/' requirements.txt
+        sed -i '2i--trusted-host pkgs.dev.azure.com' requirements.txt
+
+    - name: 'Create deployment package'
+      run: |
+        rm -rf .venv/
+        rm -rf .pytest_cache/
+        rm -rf __pycache__/
+        find . -type d -name "__pycache__" -delete
+        find . -type f -name "*.pyc" -delete
+        
+        pip install -r requirements.txt --target .python_packages/lib/site-packages
+
+    - name: 'Deploy to Azure Functions'
       uses: Azure/functions-action@v1
-      id: fa
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        scm-do-build-during-deployment: true
-        enable-oryx-build: true
+        scm-do-build-during-deployment: false
+        enable-oryx-build: false
