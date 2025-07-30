@@ -10,7 +10,7 @@ from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, se
 import pandas as pd
 
 from ..config import (
-    NOTIFIER_CONTAINER_NAME, STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME
+    NOTIFIER_CONTAINER_NAME, ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME
 )
 from ..models.check import Check
 from ..models.email import EmailMessage
@@ -86,7 +86,7 @@ class NotifierService:
             job_id (str): The job ID for logging purposes.
 
         """
-        if not all([STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME]):
+        if not all([ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME]):
             logging.error(
                 f"Job {job_id}: ACS sender connection string or container name is not configured. "
                 "Cannot create email blob."
@@ -99,7 +99,7 @@ class NotifierService:
 
             logging.info(f"Job {job_id}: Uploading email content to blob '{ACS_SENDER_CONTAINER_NAME}/{blob_name}'.")
             blob_client = BlobClient.from_connection_string(
-                conn_str=STORAGE_CONNECTION_STRING,
+                conn_str=ACS_STORAGE_CONNECTION_STRING,
                 container_name=ACS_SENDER_CONTAINER_NAME,
                 blob_name=blob_name
             )
