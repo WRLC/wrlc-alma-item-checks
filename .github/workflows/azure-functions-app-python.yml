@@ -68,6 +68,26 @@ jobs:
         PIP_INDEX_URL: https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
         PIP_TRUSTED_HOST: pkgs.dev.azure.com
 
+    - name: 'Clear existing deployment files'
+      run: |
+        PUBLISH_PROFILE='${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}'        
+        SCM_URL=$(echo "$PUBLISH_PROFILE" | grep -oP 'publishUrl="\K[^"]*' | head -1)
+        USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]*' | head -1)
+        PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]*' | head -1)
+        
+        echo "Clearing /home/site/wwwroot contents..."
+        
+        ITEMS=$(curl -s "https://${SCM_URL}/api/vfs/site/wwwroot/" -u "${USERNAME}:${PASSWORD}" | jq -r '.[].name')
+        
+        for item in $ITEMS; do
+          echo "Deleting: $item"
+          curl -X DELETE "https://${SCM_URL}/api/vfs/site/wwwroot/$item" \
+               -u "${USERNAME}:${PASSWORD}" \
+               -H "If-Match: *"
+        done
+        
+        echo "Cleared wwwroot directory"
+
     - name: 'Deploy to Azure Functions'
       uses: Azure/functions-action@v1
       with:
@@ -76,3 +96,24 @@ jobs:
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
         scm-do-build-during-deployment: false
         enable-oryx-build: false
+
+    - name: 'Restart Function App'
+      run: |
+        # Extract publish profile details for API calls
+        PUBLISH_PROFILE='${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}'
+        
+        # Extract SCM URL and credentials from publish profile
+        SCM_URL=$(echo "$PUBLISH_PROFILE" | grep -oP 'publishUrl="\K[^"]*' | head -1)
+        USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]*' | head -1)
+        PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]*' | head -1)
+        
+        # Restart the SCM site to ensure file updates are reflected
+        curl -X POST "https://${SCM_URL}/api/functions/host/restart" \
+             -u "${USERNAME}:${PASSWORD}" \
+             -H "Content-Type: application/json"
+        
+        sleep 10
+        
+        # Also restart the main function app
+        curl -X POST "https://${USERNAME}:${PASSWORD}@${SCM_URL}/api/app/restart" \
+             -H "Content-Type: application/json"
