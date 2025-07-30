@@ -1,6 +1,8 @@
 """Configuration for the Alma Item Checks application."""
 import os
 
+STORAGE_CONNECTION_STRING: str = os.getenv("AzureWebJobsStorage")
+
 SQLALCHEMY_CONNECTION_STRING: str = os.getenv("SQLALCHEMY_CONNECTION_STRING", "sqlite:///alma_item_checks.db")
 
 NOTIFIER_QUEUE_NAME: str = os.getenv("NOTIFIER_QUEUE_NAME", "alma-item-checks-input-queue")

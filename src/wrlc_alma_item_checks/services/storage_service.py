@@ -6,10 +6,8 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.storage.queue import QueueServiceClient, QueueClient, TextBase64EncodePolicy
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 
+from ..config import STORAGE_CONNECTION_STRING
 from .data_service import DataService
-
-# Cache the connection string locally within the module
-_STORAGE_CONNECTION_STRING: Optional[str] = None
 
 
 # noinspection PyMethodMayBeStatic
@@ -20,22 +18,20 @@ class StorageService:
 
     def get_blob_service_client(self) -> BlobServiceClient:
         """Returns an authenticated BlobServiceClient instance."""
-        conn_str = "%AzureWebJobsStorage%"
         try:
-            return BlobServiceClient.from_connection_string(conn_str)
+            return BlobServiceClient.from_connection_string(STORAGE_CONNECTION_STRING)
         except ValueError as e:
             logging.error(f"Invalid storage connection string format: {e}")
             raise ValueError(f"Invalid storage connection string format: {e}") from e
 
     def get_queue_service_client(self) -> QueueServiceClient:
         """Returns an authenticated QueueServiceClient instance."""
-        conn_str = "%AzureWebJobsStorage%"
         try:
             # Note: Functions often expect Base64 encoding for queue triggers/outputs.
             # Adjust policy if needed based on your specific binding configurations.
             # If using raw strings, set message_encode_policy=None, message_decode_policy=None.
             return QueueServiceClient.from_connection_string(
-                conn_str,
+                STORAGE_CONNECTION_STRING,
                 message_encode_policy=TextBase64EncodePolicy()  # Encodes outgoing messages to Base64
             )
         except ValueError as e:
@@ -49,11 +45,10 @@ class StorageService:
         """
         if not queue_name:
             raise ValueError("Queue name cannot be empty.")
-        conn_str = "%AzureWebJobsStorage%"
         try:
             # Inherits policy from service client if created that way, or specify explicitly
             return QueueClient.from_connection_string(
-                conn_str,
+                STORAGE_CONNECTION_STRING,
                 queue_name,
                 message_encode_policy=TextBase64EncodePolicy()
             )
