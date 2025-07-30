@@ -23,10 +23,16 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
+    - name: Configure pip for private repository
+      run: |
+        echo "[global]
+        extra-index-url = https://_:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/" > ${{ runner.temp }}/pip.conf
+        echo "PIP_CONFIG_FILE=${{ runner.temp }}/pip.conf" >> $GITHUB_ENV
+
     - name: Install project and all dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install . --target=".python_packages/lib/site-packages" --extra-index-url "https://_:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/"
+        python -m pip install . --target=".python_packages/lib/site-packages"
 
     - name: Archive deployment package
       uses: actions/upload-artifact@v4
