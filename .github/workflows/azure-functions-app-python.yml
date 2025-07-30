@@ -57,6 +57,7 @@ jobs:
 
     - name: 'Generate requirements.txt'
       run: |
+        poetry self add poetry-plugin-export
         poetry export -f requirements.txt --output requirements.txt --without-hashes
         
         sed -i '1i--extra-index-url https://${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/' requirements.txt
