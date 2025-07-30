@@ -10,7 +10,7 @@ from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, se
 import pandas as pd
 
 from ..config import (
-    NOTIFIER_CONTAINER_NAME, ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME
+    NOTIFIER_CONTAINER_NAME, ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME, DISABLE_EMAIL
 )
 from ..models.check import Check
 from ..models.email import EmailMessage
@@ -86,6 +86,9 @@ class NotifierService:
             job_id (str): The job ID for logging purposes.
 
         """
+        if DISABLE_EMAIL:
+            return
+
         if not all([ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME]):
             logging.error(
                 f"Job {job_id}: ACS sender connection string or container name is not configured. "
