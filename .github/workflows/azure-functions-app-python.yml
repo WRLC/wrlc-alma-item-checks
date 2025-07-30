@@ -26,9 +26,10 @@ jobs:
     - name: 'Configure pip for Azure DevOps feed'
       run: |
         mkdir -p ~/.config/pip
+        
         cat > ~/.config/pip/pip.conf << EOF
         [global]
-        extra-index-url = https://${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
+        extra-index-url = https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
         trusted-host = pkgs.dev.azure.com
         EOF
 
@@ -42,7 +43,7 @@ jobs:
     - name: 'Configure Poetry for Azure DevOps feed'
       run: |
         poetry config repositories.azure-devops https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/
-        poetry config http-basic.azure-devops ${{ secrets.AZURE_DEVOPS_PAT }} ${{ secrets.AZURE_DEVOPS_PAT }}
+        poetry config http-basic.azure-devops build ${{ secrets.AZURE_DEVOPS_PAT }}
 
     - name: 'Load cached venv'
       id: cached-poetry-dependencies
@@ -55,12 +56,14 @@ jobs:
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
       run: poetry install --no-interaction
 
+    - name: 'Add poetry export plugin'
+      run: poetry self add poetry-plugin-export
+
     - name: 'Generate requirements.txt'
       run: |
-        poetry self add poetry-plugin-export
         poetry export -f requirements.txt --output requirements.txt --without-hashes
         
-        sed -i '1i--extra-index-url https://${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/' requirements.txt
+        sed -i '1i--extra-index-url https://build:${{ secrets.AZURE_DEVOPS_PAT }}@pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/' requirements.txt
         sed -i '2i--trusted-host pkgs.dev.azure.com' requirements.txt
 
     - name: 'Create deployment package'
