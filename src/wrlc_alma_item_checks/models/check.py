@@ -2,7 +2,7 @@
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from src.wrlc_alma_item_checks.models.base import Base
 
 
 class Check(Base):

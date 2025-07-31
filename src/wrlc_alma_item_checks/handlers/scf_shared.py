@@ -1,30 +1,29 @@
 """SCFShared class to handle shared SCF Item checks"""
 import logging
 
-from sqlalchemy.orm import Session
 from wrlc_alma_api_client import AlmaApiClient
 from wrlc_alma_api_client.exceptions import AlmaApiError
 from wrlc_alma_api_client.models.item import Item
 
-from ..config import PROVENANCE
-from ..services.check_service import CheckService
-from ..repositories.database import SessionMaker
-from ..models.check import Check
+from src.wrlc_alma_item_checks.config import PROVENANCE
+from src.wrlc_alma_item_checks.services.check_service import CheckService
+from src.wrlc_alma_item_checks.repositories.database import SessionMaker
+from src.wrlc_alma_item_checks.models.check import Check
 
 
 class SCFShared:
     """
     SCFShared class to handle shared SCF Item checks
     """
-    def __init__(self, item: Item):
+    def __init__(self, barcode: str):
         """
         Initialize the SCFShared class
 
         Args:
-            item (Item): The item data
+            barcode (str): The barcode of the item to check
 
         """
-        self.item = item
+        self.barcode = barcode
 
     def should_process(self) -> Item | None:
         """
@@ -32,24 +31,7 @@ class SCFShared:
 
         Returns:
             Item | None: the item data, if found, else None
-
         """
-        barcode = self.item.item_data.barcode
-        if (  # Check if the item is not in a discard temporary location
-                self.item.holding_data.temp_location.value
-                and 'discard' in self.item.holding_data.temp_location.value.lower()
-        ):
-            logging.info(f"Item {barcode} is in a discard temporary location, skipping processing")
-            return None
-
-        if 'discard' in self.item.item_data.location.value.lower():  # Check if the item is in a discard location
-            logging.info(f"Item {barcode} is in a discard location, skipping processing")
-            return None
-
-        if not self.item.item_data.provenance or self.item.item_data.provenance.desc not in PROVENANCE:
-            logging.info(f"Item {barcode} has no checked provenance, skipping processing")
-            return None
-
         # Get item by barcode to see if active
         check_name: str = "ScfShared"  # get check name
 
@@ -65,14 +47,29 @@ class SCFShared:
         alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')
 
         try:
-            item_data: Item = alma_client.items.get_item_by_barcode(self.item.item_data.barcode)
+            item_data: Item = alma_client.items.get_item_by_barcode(self.barcode)
         except AlmaApiError as e:  # If there is an error retrieving the item from Alma, log a warning and return None
-            logging.warning(f"Error retrieving item {barcode} from Alma, skipping processing: {e}")
+            logging.warning(f"Error retrieving item {self.barcode} from Alma, skipping processing: {e}")
             return None
 
         # Check if the item was found
         if not item_data:
-            logging.info(f"Item {barcode} not active in Alma, skipping processing")
+            logging.info(f"Item {self.barcode} not active in Alma, skipping processing")
+            return None
+
+        if (  # Check if the item is not in a discard temporary location
+                item_data.holding_data.temp_location.value
+                and 'discard' in item_data.holding_data.temp_location.value.lower()
+        ):
+            logging.info(f"Item {self.barcode} is in a discard temporary location, skipping processing")
+            return None
+
+        if 'discard' in item_data.item_data.location.value.lower():  # Check if the item is in a discard location
+            logging.info(f"Item {self.barcode} is in a discard location, skipping processing")
+            return None
+
+        if not item_data.item_data.provenance or item_data.item_data.provenance.desc not in PROVENANCE:
+            logging.info(f"Item {self.barcode} has no checked provenance, skipping processing")
             return None
 
         return item_data

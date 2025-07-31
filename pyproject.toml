@@ -20,7 +20,8 @@ dependencies = [
     "jinja2 (>=3.1.6,<4.0.0)",
     "pymysql (>=1.1.1,<2.0.0)",
     "fastapi (>=0.116.1,<0.117.0)",
-    "wrlc-alma-api-client (>=0.1.0,<0.2.0)"
+    "wrlc-alma-api-client (>=0.1.0,<0.2.0)",
+    "azure-data-tables (>=12.7.0,<13.0.0)"
 ]
 
 [tool.poetry]

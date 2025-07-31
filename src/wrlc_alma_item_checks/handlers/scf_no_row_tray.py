@@ -2,15 +2,10 @@
 import logging
 import re
 
-from sqlalchemy.orm import Session
 from wrlc_alma_api_client.models.item import Item
 
-from ..config import EXCLUDED_NOTES, SKIP_LOCATIONS, NOTIFIER_QUEUE_NAME
-from ..models.check import Check
-from ..repositories.database import SessionMaker
-from ..services.check_service import CheckService
-from ..services.job_service import JobService
-from ..services.storage_service import StorageService
+from src.wrlc_alma_item_checks.config import EXCLUDED_NOTES, SKIP_LOCATIONS, SCF_NO_ROW_TRAY_CHECK_NAME
+from src.wrlc_alma_item_checks.services.storage_service import StorageService
 
 
 class SCFNoRowTray:
@@ -27,7 +22,6 @@ class SCFNoRowTray:
 
         """
         self.item: Item = item
-        self.job_service: JobService = JobService()
 
     def should_process(self) -> bool:
         """
@@ -35,82 +29,43 @@ class SCFNoRowTray:
 
         Returns:
             bool: True if the item should be processed, False otherwise
-
         """
         if self.no_row_tray_data() or self.wrong_row_tray_data():  # check if row/tray data present and in right format
             if self.item.item_data.internal_note_1 in EXCLUDED_NOTES:  # check if internal note 1 is an excluded value
-                logging.info('SCFNoRowTray: internal note 1 is in excluded list, skipping processing')
+                logging.info(
+                    msg=f"SCFNoRowTray.should_process:Item {self.item.item_data.barcode} failed "
+                        f"{SCF_NO_ROW_TRAY_CHECK_NAME} check. Staging for daily report."
+                )
                 return False
             return True
-
         return False
 
-    def process(self) -> None:
+    def stage(self) -> None:
         """
-        Process the SCFNoRowTray event
+        Stage the item in Azure Table Storage for re-processing
 
         Returns:
             None
-
         """
-        # notify users
-        check_name: str = "SCFNoRowTray"
+        # Use the barcode as the unique identifier for the row
+        barcode: str | None = self.item.item_data.barcode
 
-        db: Session = SessionMaker()  # get database session
-
-        check_service: CheckService = CheckService(db)  # get check service
-        check: Check = check_service.get_check_by_name(check_name)  # get check by name
-
-        db.close()  # close database session
-
-        if not check:  # check if check_name exists
-            logging.error(f'SCFNoRowTray: Check "{check_name}" does not exist. Exiting')
+        if not barcode:
+            logging.warning(msg="SCFNoRowTray.stage: Cannot stage item for daily check because it has no barcode.")
             return
 
-        job_id: str = self.job_service.generate_job_id(check)  # create job ID
+        # Define the entity to be saved in Azure Table Storage
+        # PartitionKey can be the check name to group all items for this specific check
+        # RowKey should be a unique identifier for the item, like the barcode
+        entity: dict[str, str] = {
+            "PartitionKey": SCF_NO_ROW_TRAY_CHECK_NAME,
+            "RowKey": barcode,
+        }
 
-        title: str = self.item.bib_data.title if self.item.bib_data.title else 'None'
-        author: str = self.item.bib_data.author if self.item.bib_data.author else 'None'
-        barcode: str = self.item.item_data.barcode if self.item.item_data.barcode else 'None'
-        call_number: str = self.item.item_data.alternative_call_number if self.item.item_data.alternative_call_number \
-            else 'None'
-        internal_note_1: str = self.item.item_data.internal_note_1 if self.item.item_data.internal_note_1 else 'None'
-
-        # Create item HTML table for the email
-        addendum_table: str = f"""
-            <table>
-                <caption>{check.email_subject}</caption>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Author</th>
-                        <th>Barcode</th>
-                        <th>Item Call Number</th>
-                        <th>Internal Note 1</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{title}</td>
-                        <td>{author}</td>
-                        <td>{barcode}</td>
-                        <td>{call_number}</td>
-                        <td>{internal_note_1}</td>
-                    </tr>
-                </tbody>
-            </table>
-        """
-
-        storage_service: StorageService = StorageService()  # Get storage service
-
-        storage_service.send_queue_message(  # Send message to notifier queue
-            NOTIFIER_QUEUE_NAME,
-            {
-                "job_id": job_id,
-                "check_id": check.id,
-                "combined_data_container": None,
-                "email_body_addendum": addendum_table
-            }
+        storage_service: StorageService = StorageService()
+        storage_service.upsert_entity(
+            table_name=SCF_NO_ROW_TRAY_CHECK_NAME,
+            entity=entity
         )
 
     def no_row_tray_data(self) -> bool:
@@ -123,10 +78,10 @@ class SCFNoRowTray:
         alt_call_number: str | None = self.item.item_data.alternative_call_number
 
         if alt_call_number is None:
-            logging.info('SCFNoRowTray.no_row_tray_data: Alternative Call Number is not set. Processing.')
+            logging.info(msg='SCFNoRowTray.no_row_tray_data: Alternative Call Number is not set. Processing.')
             return True
 
-        logging.info(f'SCFNoRowTray.no_row_tray_data: Alternative Call Number {alt_call_number} is set. Skipping.')
+        logging.info(msg=f'SCFNoRowTray.no_row_tray_data: Alternative Call Number {alt_call_number} is set. Skipping.')
         return False
 
     def wrong_row_tray_data(self) -> bool:
@@ -156,17 +111,17 @@ class SCFNoRowTray:
 
             if field_value is not None:  # only process if the field has value set
 
-                if any(loc in field_value for loc in SKIP_LOCATIONS):  # check if call number in a skipped location
+                if any(__iterable=loc in field_value for loc in SKIP_LOCATIONS):  # check if in skipped location
                     logging.info(
-                        f'SCFNoRowTray.wrong_row_tray_data: Skipping field with value "{field_value}" '
+                        msg=f'SCFNoRowTray.wrong_row_tray_data: Skipping field with value "{field_value}" '
                         f'because it contains a skipped location.')
                     continue
 
-                if re.search(pattern, field_value) is None:  # check if call number matches correct format
+                if re.search(pattern=pattern, string=field_value) is None:  # check if call number matches format
                     logging.info(
-                        f'SCFNoRowTray.wrong_row_tray_data: {field.get("label")} in incorrect format. Processing.'
+                        msg=f'SCFNoRowTray.wrong_row_tray_data: {field.get("label")} in incorrect format. Processing.'
                     )
                     return True
 
-        logging.info('SCFNoRowTray.wrong_row_tray_data: All set fields in correct format. Skipping.')
+        logging.info(msg='SCFNoRowTray.wrong_row_tray_data: All set fields in correct format. Skipping.')
         return False
