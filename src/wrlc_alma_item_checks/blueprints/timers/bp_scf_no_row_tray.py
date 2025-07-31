@@ -44,17 +44,17 @@ def DailyScfReportTimer(dailyTimer: func.TimerRequest) -> None:
 
     for entity in staged_items:
         barcode: str = entity['RowKey']
-        processed_barcodes.append(__object=barcode)
+        processed_barcodes.append(barcode)
 
         # ----- Shared Item Checks ----- #
         scf_shared: SCFShared = SCFShared(barcode=barcode)  # Create SCFShared instance from item
         item_data: Item | None = scf_shared.should_process()  # check if item should be processed
 
-        if isinstance(__obj=item_data, __class_or_tuple=Item):  # if item present, continue processing
+        if isinstance(item_data, Item):  # if item present, continue processing
             scf_no_row_tray: SCFNoRowTray = SCFNoRowTray(item=item_data)  # Create SCFNoRowTray instance from item
 
             if scf_no_row_tray.should_process():  # if item still fails validation, report it
-                items_still_failing.append(__object=scf_no_row_tray.item)
+                items_still_failing.append(scf_no_row_tray.item)
 
     # 3. Generate notification for items still failing validation
     if items_still_failing:
