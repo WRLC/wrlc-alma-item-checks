@@ -34,7 +34,7 @@ class ScfNoRowTrayReport:
         db.close()  # close database session
 
         if not check:  # check if check_name exists
-            logging.error(f'SCFNoRowTray: Check "{SCF_NO_ROW_TRAY_CHECK_NAME}" does not exist. Exiting')
+            logging.error(f'SCFNoRowTrayReport.process: Check "{SCF_NO_ROW_TRAY_CHECK_NAME}" does not exist. Exiting')
             return
 
         job_id: str = self.job_service.generate_job_id(check)  # create job ID

@@ -33,8 +33,8 @@ class SCFNoRowTray:
         if self.no_row_tray_data() or self.wrong_row_tray_data():  # check if row/tray data present and in right format
             if self.item.item_data.internal_note_1 in EXCLUDED_NOTES:  # check if internal note 1 is an excluded value
                 logging.info(
-                    f"Item {self.item.item_data.barcode} failed {SCF_NO_ROW_TRAY_CHECK_NAME} "
-                    f"check. Staging for daily report."
+                    msg=f"SCFNoRowTray.should_process:Item {self.item.item_data.barcode} failed "
+                        f"{SCF_NO_ROW_TRAY_CHECK_NAME} check. Staging for daily report."
                 )
                 return False
             return True
@@ -48,21 +48,25 @@ class SCFNoRowTray:
             None
         """
         # Use the barcode as the unique identifier for the row
-        barcode = self.item.item_data.barcode
+        barcode: str | None = self.item.item_data.barcode
+
         if not barcode:
-            logging.warning("Cannot stage item for daily check because it has no barcode.")
+            logging.warning(msg="SCFNoRowTray.stage: Cannot stage item for daily check because it has no barcode.")
             return
 
         # Define the entity to be saved in Azure Table Storage
         # PartitionKey can be the check name to group all items for this specific check
         # RowKey should be a unique identifier for the item, like the barcode
-        entity = {
+        entity: dict[str, str] = {
             "PartitionKey": SCF_NO_ROW_TRAY_CHECK_NAME,
             "RowKey": barcode,
         }
 
-        storage_service = StorageService()
-        storage_service.upsert_entity("ScfNoRowTray", entity)
+        storage_service: StorageService = StorageService()
+        storage_service.upsert_entity(
+            table_name=SCF_NO_ROW_TRAY_CHECK_NAME,
+            entity=entity
+        )
 
     def no_row_tray_data(self) -> bool:
         """
@@ -74,10 +78,10 @@ class SCFNoRowTray:
         alt_call_number: str | None = self.item.item_data.alternative_call_number
 
         if alt_call_number is None:
-            logging.info('SCFNoRowTray.no_row_tray_data: Alternative Call Number is not set. Processing.')
+            logging.info(msg='SCFNoRowTray.no_row_tray_data: Alternative Call Number is not set. Processing.')
             return True
 
-        logging.info(f'SCFNoRowTray.no_row_tray_data: Alternative Call Number {alt_call_number} is set. Skipping.')
+        logging.info(msg=f'SCFNoRowTray.no_row_tray_data: Alternative Call Number {alt_call_number} is set. Skipping.')
         return False
 
     def wrong_row_tray_data(self) -> bool:
@@ -107,17 +111,17 @@ class SCFNoRowTray:
 
             if field_value is not None:  # only process if the field has value set
 
-                if any(loc in field_value for loc in SKIP_LOCATIONS):  # check if call number in a skipped location
+                if any(__iterable=loc in field_value for loc in SKIP_LOCATIONS):  # check if in skipped location
                     logging.info(
-                        f'SCFNoRowTray.wrong_row_tray_data: Skipping field with value "{field_value}" '
+                        msg=f'SCFNoRowTray.wrong_row_tray_data: Skipping field with value "{field_value}" '
                         f'because it contains a skipped location.')
                     continue
 
-                if re.search(pattern, field_value) is None:  # check if call number matches correct format
+                if re.search(pattern=pattern, string=field_value) is None:  # check if call number matches format
                     logging.info(
-                        f'SCFNoRowTray.wrong_row_tray_data: {field.get("label")} in incorrect format. Processing.'
+                        msg=f'SCFNoRowTray.wrong_row_tray_data: {field.get("label")} in incorrect format. Processing.'
                     )
                     return True
 
-        logging.info('SCFNoRowTray.wrong_row_tray_data: All set fields in correct format. Skipping.')
+        logging.info(msg='SCFNoRowTray.wrong_row_tray_data: All set fields in correct format. Skipping.')
         return False
