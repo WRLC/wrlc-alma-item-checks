@@ -1,5 +1,7 @@
 """Model for Institution."""
-from .base import Base
+from sqlalchemy import Column, Integer, String
+
+from src.wrlc_alma_item_checks.models.base import Base
 
 
 class Institution(Base):

@@ -23,6 +23,10 @@ TEMPLATE_FILE_NAME = "email_template.html.j2"
 ACS_SENDER_CONTAINER_NAME: str = _get_required_env("ACS_SENDER_CONTAINER_NAME")
 ACS_STORAGE_CONNECTION_STRING: str = _get_required_env("ACS_STORAGE_CONNECTION_STRING")
 
+# --- SCF No Row/Tray Timer (Required for the timer trigger) ---
+SCF_NO_ROW_TRAY_SCHEDULE: str = _get_required_env("SCF_NO_ROW_TRAY_SCHEDULE")
+SCF_NO_ROW_TRAY_CHECK_NAME: str = _get_required_env("SCF_NO_ROW_TRAY_CHECK_NAME")
+
 # --- SCF Duplicates Timer (Required for the timer trigger) ---
 SCF_DUPLICATES_SCHEDULE: str = _get_required_env("SCF_DUPLICATES_SCHEDULE")
 SCF_DUPLICATES_CHECK_NAME: str = _get_required_env("SCF_DUPLICATES_CHECK_NAME")

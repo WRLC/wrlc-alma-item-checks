@@ -1,6 +1,7 @@
 """Blueprint for Alma Item Update Webhook."""
 import json
 import logging
+import os
 
 import azure.functions as func
 from wrlc_alma_api_client.models.item import Item
@@ -10,7 +11,6 @@ from src.wrlc_alma_item_checks.handlers.scf_no_row_tray import SCFNoRowTray
 from src.wrlc_alma_item_checks.handlers.scf_shared import SCFShared
 from src.wrlc_alma_item_checks.handlers.scf_no_x import SCFNoX
 from src.wrlc_alma_item_checks.utils.security import validate_webhook_signature
-from src.wrlc_alma_item_checks.handlers.scf_withdrawn import SCFWithdrawn
 
 bp = func.Blueprint()
 
@@ -37,8 +37,12 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Hello World", status_code=200)
 
     # ----- Validate Signature ----- #
-    if not validate_webhook_signature(req.get_body(), SCF_WEBHOOK_SECRET, req.headers.get("X-Exl-Signature")):
-        return func.HttpResponse("Invalid signature", status_code=401)
+    is_local_dev = os.environ.get("AZURE_FUNCTIONS_ENVIRONMENT") == "Development"
+
+    if not is_local_dev:
+        if not validate_webhook_signature(req.get_body(), SCF_WEBHOOK_SECRET, req.headers.get("X-Exl-Signature")):
+            logging.warning("Invalid webhook signature received.")
+            return func.HttpResponse("Invalid signature", status_code=403)
 
     # ----- Parse Item ----- #
     try:
@@ -52,22 +56,20 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Error processing request", status_code=500)
 
     # ----- Shared Item Checks ----- #
-    scf_shared: SCFShared = SCFShared(item)  # Create SCFShared instance from item
+    scf_shared: SCFShared = SCFShared(item.item_data.barcode)  # Create SCFShared instance from item
     item_data: Item | None = scf_shared.should_process()  # check if item should be processed
 
     if isinstance(item_data, Item):  # if item present, continue processing
 
         # ----- No X in barcode ----- #
         scf_no_x: SCFNoX = SCFNoX(item_data)  # Create SCFNoX instance from item
-
-        if scf_no_x.should_process():  # Check if SCFNoX should be processed
-            scf_no_x.process()  # If so, process it
+        scf_no_x.should_process()  # Check if SCFNoX should be processed
 
         # ----- Incorrect or No Row/Tray information ----- #
         scf_no_row_tray: SCFNoRowTray = SCFNoRowTray(item_data)  # Create SCFNoRowTray instance from item
 
-        if scf_no_row_tray.should_process():  # Check if SCFNoRowTray should be processed
-            scf_no_row_tray.process()  # If so, process it
+        if scf_no_row_tray.should_process():  # if item should be re-processed, stage it for daily report
+            scf_no_row_tray.stage()
 
         # ----- Withdrawn Item ----- #
         # scf_withdrawn: SCFWithdrawn = SCFWithdrawn(item_data)

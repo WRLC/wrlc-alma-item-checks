@@ -1,9 +1,10 @@
 """ Handles IZ No Row/Tray events """
 from wrlc_alma_api_client.models.item import Item
 
-from ..services.job_service import JobService
+from src.wrlc_alma_item_checks.services.job_service import JobService
 
 
+# noinspection PyMethodMayBeStatic,PyUnusedLocal
 class IzNoRowTray:
     """
     IZNoRowTray class to handle IZ No Row/Tray events

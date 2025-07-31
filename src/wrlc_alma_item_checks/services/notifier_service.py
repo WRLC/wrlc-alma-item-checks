@@ -9,11 +9,11 @@ from azure.storage.blob import BlobClient
 from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, select_autoescape
 import pandas as pd
 
-from ..config import (
+from src.wrlc_alma_item_checks.config import (
     NOTIFIER_CONTAINER_NAME, ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME, DISABLE_EMAIL
 )
-from ..models.check import Check
-from ..models.email import EmailMessage
+from src.wrlc_alma_item_checks.models.check import Check
+from src.wrlc_alma_item_checks.models.email import EmailMessage
 from .storage_service import StorageService
 
 

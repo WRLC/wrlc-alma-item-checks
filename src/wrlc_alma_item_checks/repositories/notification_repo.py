@@ -5,7 +5,7 @@ from sqlalchemy import Select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from ..models.notification import Notification as SQLAlchemyNotification
+from src.wrlc_alma_item_checks.models.notification import Notification as SQLAlchemyNotification
 
 
 # noinspection PyMethodMayBeStatic

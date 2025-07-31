@@ -2,12 +2,13 @@
 import logging
 from typing import Dict, List, Union, Optional
 
+from azure.data.tables import TableServiceClient, UpdateMode
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.storage.queue import QueueServiceClient, QueueClient, TextBase64EncodePolicy
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 
-from ..config import STORAGE_CONNECTION_STRING
-from .data_service import DataService
+from src.wrlc_alma_item_checks.config import STORAGE_CONNECTION_STRING
+from src.wrlc_alma_item_checks.services.data_service import DataService
 
 
 # noinspection PyMethodMayBeStatic
@@ -37,6 +38,14 @@ class StorageService:
         except ValueError as e:
             logging.error(f"Invalid storage connection string format: {e}")
             raise ValueError(f"Invalid storage connection string format: {e}") from e
+
+    def get_table_service_client(self) -> TableServiceClient:
+        """Returns an authenticated TableServiceClient instance."""
+        try:
+            return TableServiceClient.from_connection_string(STORAGE_CONNECTION_STRING)
+        except ValueError as e:
+            logging.error(f"Invalid storage connection string format for Table Service: {e}")
+            raise ValueError(f"Invalid storage connection string format for Table Service: {e}") from e
 
     def get_queue_client(self, queue_name: str) -> QueueClient:
         """
@@ -291,3 +300,113 @@ class StorageService:
         except Exception as e:
             logging.error(f"Failed to send message to queue '{queue_name}': {e}")
             raise  # Re-raise SDK or other exceptions
+
+    def get_entities(self, table_name: str, filter_query: Optional[str] = None) -> List[Dict[str, any]]:
+        """
+        Retrieves entities from a specified Azure Table, with an optional filter.
+
+        Args:
+            table_name: The name of the table to query.
+            filter_query: An OData filter string to apply to the query.
+                          If None, all entities in the table are returned.
+                          Example: "PartitionKey eq 'some_key'"
+
+        Returns:
+            A list of dictionaries, where each dictionary is an entity.
+            Returns an empty list if the table does not exist.
+
+        Raises:
+            ValueError: If table_name is invalid.
+            azure.core.exceptions.ServiceRequestError: For network or other service issues.
+        """
+        if not table_name:
+            raise ValueError("Table name cannot be empty.")
+
+        logging.debug(f"Querying entities from table '{table_name}' with filter: '{filter_query or 'All'}'")
+        try:
+            table_client = self.get_table_service_client().get_table_client(table_name)
+
+            # The query_entities method returns an ItemPaged, which is an iterable.
+            # We convert it to a list to return all results at once.
+            entities = list(table_client.query_entities(query_filter=filter_query))
+
+            logging.info(f"Retrieved {len(entities)} entities from table '{table_name}'.")
+            return entities
+
+        except ResourceNotFoundError:
+            logging.warning(f"Table '{table_name}' not found while querying entities. Returning empty list.")
+            return []
+        except Exception as e:
+            logging.error(f"Failed to query entities from table '{table_name}': {e}", exc_info=True)
+            raise
+
+    def delete_entity(self, table_name: str, partition_key: str, row_key: str):
+        """
+        Deletes a specific entity from an Azure Table.
+        Does not raise an error if the entity does not exist.
+
+        Args:
+            table_name: The name of the target table.
+            partition_key: The PartitionKey of the entity to delete.
+            row_key: The RowKey of the entity to delete.
+
+        Raises:
+            ValueError: If any of the key arguments are invalid.
+            azure.core.exceptions.ServiceRequestError: For network or other service issues.
+        """
+        if not all([table_name, partition_key, row_key]):
+            raise ValueError("Table name, partition key, and row key cannot be empty.")
+
+        logging.debug(f"Attempting to delete entity from {table_name} with PK='{partition_key}' and RK='{row_key}'")
+        try:
+            table_client = self.get_table_service_client().get_table_client(table_name)
+            table_client.delete_entity(partition_key=partition_key, row_key=row_key)
+            logging.info(f"Successfully deleted entity from {table_name} with RowKey '{row_key}'.")
+        except ResourceNotFoundError:
+            logging.warning(
+                f"Entity not found during deletion, presumed already deleted: "
+                f"Table='{table_name}', PK='{partition_key}', RK='{row_key}'"
+            )
+        except Exception as e:
+            logging.error(f"Failed to delete entity from {table_name} with RowKey '{row_key}': {e}", exc_info=True)
+            raise
+
+    def upsert_entity(self, table_name: str, entity: Dict[str, any]):
+        """
+        Inserts or updates an entity in the specified Azure Table.
+        Creates the table if it does not exist.
+
+        Args:
+            table_name: The name of the target table.
+            entity: A dictionary representing the entity to upsert.
+                    Must contain 'PartitionKey' and 'RowKey'.
+
+        Raises:
+            ValueError: If table_name is invalid or entity is missing required keys.
+            azure.core.exceptions.ServiceRequestError: For network or other service issues.
+        """
+        if not table_name:
+            raise ValueError("Table name cannot be empty.")
+        if not all(k in entity for k in ["PartitionKey", "RowKey"]):
+            raise ValueError("Entity must contain 'PartitionKey' and 'RowKey'.")
+
+        logging.debug(f"Attempting to upsert entity into table '{table_name}'")
+        try:
+            table_client = self.get_table_service_client().get_table_client(table_name)
+
+            # Ensure the table exists before trying to write to it. This is idempotent.
+            try:
+                table_client.create_table()
+                logging.info(f"Table '{table_name}' did not exist and was created.")
+            except ResourceExistsError:
+                # Table already exists, which is the expected state in most cases.
+                pass
+
+            # Upsert the entity. Mode.REPLACE will insert if new, or fully replace if it exists.
+            table_client.upsert_entity(entity=entity, mode=UpdateMode.REPLACE)
+            logging.info(f"Successfully upserted entity with RowKey '{entity.get('RowKey')}' "
+                         f"into table '{table_name}'.")
+
+        except Exception as e:
+            logging.error(f"Failed to upsert entity into table '{table_name}': {e}", exc_info=True)
+            raise
