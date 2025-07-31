@@ -53,7 +53,7 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
 
     # ----- Shared Item Checks ----- #
     scf_shared: SCFShared = SCFShared(item)  # Create SCFShared instance from item
-    item_data: Item = scf_shared.should_process()  # check if item should be processed and re-retrieve it from Alma
+    item_data: Item | None = scf_shared.should_process()  # check if item should be processed
 
     if isinstance(item_data, Item):  # if item present, continue processing
 
