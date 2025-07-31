@@ -116,15 +116,15 @@ class StorageService:
             upload_data: Union[str, bytes]
             settings_to_pass: Optional[ContentSettings] = None
 
-            if isinstance(__obj=data, __class_or_tuple=(dict, list)):
+            if isinstance(data, (dict, list)):
                 upload_data: bytes = data_service.serialize_data(data=data).encode()
                 settings_to_pass: ContentSettings = ContentSettings(content_type='application/json')
 
-            elif isinstance(__obj=data, __class_or_tuple=str):
+            elif isinstance(data, str):
                 upload_data: bytes = data.encode()
                 settings_to_pass: ContentSettings = ContentSettings(content_type='text/plain; charset=utf-8')
 
-            elif isinstance(__obj=data, __class_or_tuple=bytes):
+            elif isinstance(data, bytes):
                 upload_data: bytes = data
             else:
                 logging.error(
@@ -344,9 +344,9 @@ class StorageService:
 
         message_str: str
         try:
-            if isinstance(__obj=message_content, __class_or_tuple=(dict, list)):
+            if isinstance(message_content, (dict, list)):
                 message_str = self.data_service.serialize_data(data=message_content)
-            elif isinstance(__obj=message_content, __class_or_tuple=str):
+            elif isinstance(message_content, str):
                 message_str = message_content
             else:
                 logging.error(

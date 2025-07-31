@@ -111,7 +111,7 @@ class SCFNoRowTray:
 
             if field_value is not None:  # only process if the field has value set
 
-                if any(__iterable=loc in field_value for loc in SKIP_LOCATIONS):  # check if in skipped location
+                if any(loc in field_value for loc in SKIP_LOCATIONS):  # check if in skipped location
                     logging.info(
                         msg=f'SCFNoRowTray.wrong_row_tray_data: Skipping field with value "{field_value}" '
                         f'because it contains a skipped location.')
