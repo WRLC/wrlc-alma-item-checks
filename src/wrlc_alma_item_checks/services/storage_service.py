@@ -482,13 +482,8 @@ class StorageService:
 
         logging.debug(msg=f"StorageService.upsert_entity: Attempting to upsert entity into table '{table_name}'")
         try:
+            self.create_table_if_not_exists(table_name)
             table_client: TableClient = self.get_table_service_client().get_table_client(table_name)
-
-            try:
-                table_client.create_table()
-                logging.info(msg=f"StorageService.upsert_entity: Table '{table_name}' did not exist and was created.")
-            except ResourceExistsError:
-                pass
 
             table_client.upsert_entity(entity=entity, mode=UpdateMode.REPLACE)
             logging.info(
