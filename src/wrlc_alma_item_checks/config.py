@@ -26,6 +26,8 @@ ACS_STORAGE_CONNECTION_STRING: str = _get_required_env("ACS_STORAGE_CONNECTION_S
 # --- SCF No Row/Tray Timer (Required for the timer trigger) ---
 SCF_NO_ROW_TRAY_SCHEDULE: str = _get_required_env("SCF_NO_ROW_TRAY_SCHEDULE")
 SCF_NO_ROW_TRAY_CHECK_NAME: str = _get_required_env("SCF_NO_ROW_TRAY_CHECK_NAME")
+SCF_NO_ROW_TRAY_PROCESSOR_QUEUE_NAME = _get_required_env("SCF_NO_ROW_TRAY_PROCESSOR_QUEUE_NAME")
+SCF_NO_ROW_TRAY_RESULTS_TABLE_NAME = _get_required_env("SCF_NO_ROW_TRAY_RESULTS_TABLE_NAME")
 
 # --- SCF Duplicates Timer (Required for the timer trigger) ---
 SCF_DUPLICATES_SCHEDULE: str = _get_required_env("SCF_DUPLICATES_SCHEDULE")
