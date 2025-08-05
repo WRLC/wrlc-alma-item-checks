@@ -1,11 +1,13 @@
 """SCFShared class to handle shared SCF Item checks"""
 import logging
+import time
 
+from requests.exceptions import RequestException
 from wrlc_alma_api_client import AlmaApiClient
 from wrlc_alma_api_client.exceptions import AlmaApiError
 from wrlc_alma_api_client.models.item import Item
 
-from src.wrlc_alma_item_checks.config import PROVENANCE
+from src.wrlc_alma_item_checks.config import PROVENANCE, API_CLIENT_TIMEOUT
 from src.wrlc_alma_item_checks.services.check_service import CheckService
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 from src.wrlc_alma_item_checks.models.check import Check
@@ -44,13 +46,29 @@ class SCFShared:
             return None
 
         # Retrieve the item from Alma using the barcode
-        alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA')
+        alma_client: AlmaApiClient = AlmaApiClient(check.api_key, 'NA', timeout=API_CLIENT_TIMEOUT)
 
-        try:
-            item_data: Item = alma_client.items.get_item_by_barcode(self.barcode)
-        except AlmaApiError as e:  # If there is an error retrieving the item from Alma, log a warning and return None
-            logging.warning(f"Error retrieving item {self.barcode} from Alma, skipping processing: {e}")
-            return None
+        item_data: Item | None = None
+        max_retries: int = 3
+
+        for attempt in range(max_retries):
+            try:
+                item_data = alma_client.items.get_item_by_barcode(self.barcode)
+                break  # Success, exit the loop
+            except RequestException as e:  # Catches timeouts, connection errors, etc.
+                logging.warning(
+                    f"Attempt {attempt + 1}/{max_retries} to get item {self.barcode} failed with a network error: {e}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(2 * (attempt + 1))  # Wait 2, then 4 seconds before retrying
+                else:
+                    logging.error(
+                        f"All {max_retries} retry attempts failed for barcode {self.barcode}. Skipping processing."
+                    )
+                    return None
+            except AlmaApiError as e:  # Non-retriable API error (e.g., 404 Not Found)
+                logging.warning(f"Error retrieving item {self.barcode} from Alma, skipping processing: {e}")
+                return None
 
         # Check if the item was found
         if not item_data:
