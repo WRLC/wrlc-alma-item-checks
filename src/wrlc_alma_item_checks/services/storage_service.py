@@ -3,7 +3,7 @@ import logging
 from azure.core.paging import ItemPaged
 from typing import Dict, List, Union, Optional
 
-from azure.data.tables import TableServiceClient, UpdateMode, TableClient
+from azure.data.tables import TableServiceClient, UpdateMode, TableClient, TableEntity
 from azure.storage.blob import BlobServiceClient, ContentSettings, BlobClient, ContainerClient, BlobProperties
 from azure.storage.queue import QueueServiceClient, QueueClient, TextBase64EncodePolicy
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
@@ -482,13 +482,8 @@ class StorageService:
 
         logging.debug(msg=f"StorageService.upsert_entity: Attempting to upsert entity into table '{table_name}'")
         try:
+            self.create_table_if_not_exists(table_name)
             table_client: TableClient = self.get_table_service_client().get_table_client(table_name)
-
-            try:
-                table_client.create_table()
-                logging.info(msg=f"StorageService.upsert_entity: Table '{table_name}' did not exist and was created.")
-            except ResourceExistsError:
-                pass
 
             table_client.upsert_entity(entity=entity, mode=UpdateMode.REPLACE)
             logging.info(
@@ -502,3 +497,70 @@ class StorageService:
                 exc_info=True
             )
             raise
+
+    def create_table_if_not_exists(self, table_name: str):
+        """
+        Creates a table if it does not already exist.
+
+        Args:
+            table_name: The name of the table to create.
+        """
+        if not table_name:
+            logging.error("StorageService.create_table_if_not_exists: Table name cannot be empty.")
+            raise ValueError("Table name cannot be empty.")
+
+        try:
+            table_service_client = self.get_table_service_client()
+            table_service_client.create_table(table_name=table_name)
+            logging.info(f"StorageService.create_table_if_not_exists: Table '{table_name}' created or already exists.")
+        except ResourceExistsError:
+            logging.debug(f"StorageService.create_table_if_not_exists: Table '{table_name}' already exists.")
+        except Exception as e:
+            logging.error(f"StorageService.create_table_if_not_exists: Failed to create table '{table_name}': {e}")
+            raise
+
+    def delete_table(self, table_name: str):
+        """
+        Deletes a table. Does not raise an error if the table does not exist.
+
+        Args:
+            table_name: The name of the table to delete.
+        """
+        if not table_name:
+            logging.error("StorageService.delete_table: Table name cannot be empty.")
+            raise ValueError("Table name cannot be empty.")
+
+        try:
+            table_service_client = self.get_table_service_client()
+            table_service_client.delete_table(table_name=table_name)
+            logging.info(f"StorageService.delete_table: Successfully deleted table '{table_name}'.")
+        except ResourceNotFoundError:
+            logging.warning(f"StorageService.delete_table: Table '{table_name}' not found, presumed already deleted.")
+        except Exception as e:
+            logging.error(f"StorageService.delete_table: Failed to delete table '{table_name}': {e}")
+            raise
+
+    def delete_entities_batch(self, table_name: str, entities: List[Dict[str, any]]):
+        """
+        Deletes a list of entities from a table in batches of 100.
+
+        Args:
+            table_name: The name of the target table.
+            entities: A list of entity dictionaries to delete. Each must have PartitionKey and RowKey.
+        """
+        if not entities:
+            return
+
+        table_client = self.get_table_service_client().get_table_client(table_name)
+        for i in range(0, len(entities), 100):
+            batch = entities[i:i + 100]
+            operations = [
+                ("delete", TableEntity(PartitionKey=e["PartitionKey"], RowKey=e["RowKey"]))
+                for e in batch
+            ]
+            try:
+                table_client.submit_transaction(operations=operations)
+                logging.info(f"Successfully deleted batch of {len(operations)} entities from '{table_name}'.")
+            except Exception as e:
+                logging.error(f"Error deleting batch from table '{table_name}': {e}")
+                raise
