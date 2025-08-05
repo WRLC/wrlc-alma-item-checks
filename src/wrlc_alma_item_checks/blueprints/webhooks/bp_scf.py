@@ -46,17 +46,25 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
 
     # ----- Parse Item ----- #
     try:
-        item: Item = Item(**req.get_json()['item'])  # Parse incoming JSON into Item
+        request_data = req.get_json()
+        barcode = request_data.get("item", {}).get("item_data", {}).get("barcode")
 
-    except ValueError as e:  # Catch JSON decoding errors specifically
-        logging.error(f"Error processing JSON request: {e}")
+        if not barcode:
+            logging.error("Barcode not found in webhook payload.")
+
+            return func.HttpResponse("Invalid payload: Barcode is missing.", status_code=400)
+
+    except ValueError:  # Catches req.get_json() errors
+
+        logging.error("Error processing JSON request: Invalid JSON format.")
         return func.HttpResponse("Invalid JSON format", status_code=400)
-    except Exception as e:
-        logging.error(f"Unexpected error processing request: {e}", exc_info=True)  # Log traceback
+
+    except Exception as e:  # Catches other errors
+        logging.error(f"Unexpected error processing request: {e}", exc_info=True)
         return func.HttpResponse("Error processing request", status_code=500)
 
     # ----- Shared Item Checks ----- #
-    scf_shared: SCFShared = SCFShared(item.item_data.barcode)  # Create SCFShared instance from item
+    scf_shared: SCFShared = SCFShared(barcode)  # Create SCFShared instance from barcode
     item_data: Item | None = scf_shared.should_process()  # check if item should be processed
 
     if isinstance(item_data, Item):  # if item present, continue processing
