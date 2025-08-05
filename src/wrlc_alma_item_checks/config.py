@@ -36,6 +36,9 @@ SCF_DUPLICATES_CHECK_NAME: str = _get_required_env("SCF_DUPLICATES_CHECK_NAME")
 # --- SCF Webhook (Required for the webhook) ---
 SCF_WEBHOOK_SECRET: str = _get_required_env("SCF_WEBHOOK_SECRET")
 
+# --- API Client Settings ---
+API_CLIENT_TIMEOUT: int = int(os.environ.get("API_CLIENT_TIMEOUT", 90))  # Default to 90 seconds
+
 # Disable email
 DISABLE_EMAIL: bool = False
 disable_email_setting: str | None = os.environ.get("DISABLE_EMAIL")
