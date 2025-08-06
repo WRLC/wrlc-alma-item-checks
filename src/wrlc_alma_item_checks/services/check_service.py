@@ -10,10 +10,15 @@ class CheckService:
     Service for managing checks in the Alma item checks system.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session) -> None:
+        """
+
+        Returns:
+            None: 
+        """
         self.check_repo = CheckRepository(session)
 
-    def get_check_by_id(self, check_id: int) -> Check:
+    def get_check_by_id(self, check_id: int) -> Check | None:
         """
         Get a check by its ID.
 
@@ -25,7 +30,7 @@ class CheckService:
         """
         return self.check_repo.get_check_by_id(check_id)
 
-    def get_check_by_name(self, check_name: str) -> Check:
+    def get_check_by_name(self, check_name: str) -> Check | None:
         """
         Get a check by its name.
 

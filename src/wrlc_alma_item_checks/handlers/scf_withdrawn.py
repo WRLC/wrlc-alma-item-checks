@@ -2,7 +2,7 @@
 import logging
 
 from sqlalchemy.orm import Session
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.config import NOTIFIER_QUEUE_NAME
@@ -55,7 +55,7 @@ class SCFWithdrawn:
         db: Session = SessionMaker()
 
         check_service: CheckService = self.check_service(db)
-        check: Check = check_service.get_check_by_name(check_name)
+        check: Check | None = check_service.get_check_by_name(check_name)
 
         db.close()
 

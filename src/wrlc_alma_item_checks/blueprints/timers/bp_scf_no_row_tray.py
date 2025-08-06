@@ -1,12 +1,12 @@
 """Timer trigger to re-check SCF No Row/Tray items"""
 import json
 import logging
-from typing import Any, Union
+from typing import Any, Union, cast
 import uuid
 
 import azure.functions as func
 from datetime import datetime, timezone
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
 from src.wrlc_alma_item_checks.config import (
     NOTIFIER_CONTAINER_NAME,
@@ -33,7 +33,7 @@ def DailyScfReportTimer(dailyTimer: func.TimerRequest, out_msg: func.Out[str]) -
     """THE STARTER: Timer-triggered function to kick off the processing of staged items.
  
     This function gets all staged barcodes and places a single message on a queue
-    to start a batch processing workflow. It runs very quickly and will not time out.
+    to start a batch processing workflow.
     """
     if dailyTimer.past_due:
         logging.warning(msg="The timer is past due!")
@@ -131,9 +131,10 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
 
     # 1. Download the full list of barcodes from the blob
     try:
-        all_barcodes: list[str] = storage_service.download_blob_as_json(
+        downloaded_data = storage_service.download_blob_as_json(
             container_name=container_name, blob_name=barcodes_to_process_blob_name
         )
+        all_barcodes: list[str] = cast(list[str], downloaded_data)
     except Exception as e:
         logging.error(
             f"Run ID '{run_id}': Failed to download barcode list from blob '{barcodes_to_process_blob_name}'. "
@@ -196,9 +197,11 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
 
         # Clean up the original staged items using the efficient batch delete
         # Download the original list from the blob created by the starter function
-        original_entities: list[dict[str, Any]] = storage_service.download_blob_as_json(
+        downloaded_entities = storage_service.download_blob_as_json(
             container_name=container_name, blob_name=original_entities_blob_name
         )
+        original_entities: list[dict[str, Any]] = cast(list[dict[str, Any]], downloaded_entities)
+
         storage_service.delete_entities_batch(SCF_NO_ROW_TRAY_CHECK_NAME, original_entities)
 
         # Clean up the temporary results table

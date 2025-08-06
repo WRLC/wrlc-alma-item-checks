@@ -4,7 +4,7 @@ import logging
 import os
 
 import azure.functions as func
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
 from src.wrlc_alma_item_checks.config import SCF_WEBHOOK_SECRET
 from src.wrlc_alma_item_checks.handlers.scf_no_row_tray import SCFNoRowTray

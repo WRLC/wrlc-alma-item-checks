@@ -2,11 +2,14 @@
 import azure.functions as func
 import logging
 
-from wrlc_alma_api_client import AlmaApiClient
-from wrlc_alma_api_client.models import AnalyticsReportResults
+from wrlc_alma_api_client import AlmaApiClient  # type: ignore
+from wrlc_alma_api_client.models import AnalyticsReportResults  # type: ignore
 
 from src.wrlc_alma_item_checks.config import (
-    SCF_DUPLICATES_SCHEDULE, SCF_DUPLICATES_CHECK_NAME, NOTIFIER_CONTAINER_NAME, NOTIFIER_QUEUE_NAME
+    NOTIFIER_CONTAINER_NAME,
+    NOTIFIER_QUEUE_NAME,
+    SCF_DUPLICATES_CHECK_NAME,
+    SCF_DUPLICATES_SCHEDULE
 )
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
@@ -35,7 +38,7 @@ def ScfDuplicatesTimer(scfduptimer: func.TimerRequest) -> None:
 
     with SessionMaker() as db:
         check_service: CheckService = CheckService(db)
-        check: Check = check_service.get_check_by_name(check_name)
+        check: Check | None = check_service.get_check_by_name(check_name)
 
     if not check:  # check if check exists
         logging.info(f'Check "{check_name}" does not exist. Exiting')

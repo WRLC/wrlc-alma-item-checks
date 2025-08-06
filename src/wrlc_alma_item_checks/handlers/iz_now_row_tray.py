@@ -1,5 +1,5 @@
 """ Handles IZ No Row/Tray events """
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
 from src.wrlc_alma_item_checks.services.job_service import JobService
 

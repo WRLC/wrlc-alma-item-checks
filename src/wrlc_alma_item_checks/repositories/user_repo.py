@@ -25,7 +25,7 @@ class UserRepository:
         Returns:
             list[SQLAlchemyUserModel]: A list of all users.
         """
-        stmt = Select(SQLAlchemyUserModel).limit(limit).offset(skip)
+        stmt: Select = Select(SQLAlchemyUserModel).limit(limit).offset(skip)
         try:
             return list(self.session.execute(stmt).scalars().all())
         except SQLAlchemyError as e:
@@ -47,7 +47,7 @@ class UserRepository:
         Returns:
             User: The user object.
         """
-        stmt = (
+        stmt: Select = (
             Select(SQLAlchemyUserModel)
             .join(Notification, SQLAlchemyUserModel.id == Notification.user_id)
             .where(Notification.check_id == check_id)
@@ -74,7 +74,7 @@ class UserRepository:
         Returns:
             User: The user object.
         """
-        stmt = Select(SQLAlchemyUserModel).where(SQLAlchemyUserModel.id == user_id)
+        stmt: Select = Select(SQLAlchemyUserModel).where(SQLAlchemyUserModel.id == user_id)
         try:
             return self.session.execute(stmt).scalars().one()
         except SQLAlchemyError as e:

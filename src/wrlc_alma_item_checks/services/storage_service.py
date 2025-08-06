@@ -1,7 +1,7 @@
 """Storage Helpers for Azure Blob and Queue Services"""
 import logging
 from azure.core.paging import ItemPaged
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Any
 
 from azure.data.tables import TableServiceClient, UpdateMode, TableClient, TableEntity
 from azure.storage.blob import BlobServiceClient, ContentSettings, BlobClient, ContainerClient, BlobProperties
@@ -15,7 +15,7 @@ from src.wrlc_alma_item_checks.services.data_service import DataService
 # noinspection PyMethodMayBeStatic
 class StorageService:
     """Service for Azure Storage operations."""
-    def __init__(self):
+    def __init__(self) -> None:
         self.data_service: DataService = DataService()
 
     def get_blob_service_client(self) -> BlobServiceClient:
@@ -117,15 +117,15 @@ class StorageService:
             settings_to_pass: Optional[ContentSettings] = None
 
             if isinstance(data, (dict, list)):
-                upload_data: bytes = data_service.serialize_data(data=data).encode()
-                settings_to_pass: ContentSettings = ContentSettings(content_type='application/json')
+                upload_data = data_service.serialize_data(data=data).encode()
+                settings_to_pass = ContentSettings(content_type='application/json')
 
             elif isinstance(data, str):
-                upload_data: bytes = data.encode()
-                settings_to_pass: ContentSettings = ContentSettings(content_type='text/plain; charset=utf-8')
+                upload_data = data.encode()
+                settings_to_pass = ContentSettings(content_type='text/plain; charset=utf-8')
 
             elif isinstance(data, bytes):
-                upload_data: bytes = data
+                upload_data = data
             else:
                 logging.error(
                     msg=f"StorageService.upload_blob_data: Unsupported data type for upload_blob_data: {type(data)}"
@@ -368,7 +368,7 @@ class StorageService:
             )
             raise
 
-    def get_entities(self, table_name: str, filter_query: Optional[str] = None) -> List[Dict[str, any]]:
+    def get_entities(self, table_name: str, filter_query: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Retrieves entities from a specified Azure Table, with an optional filter.
 
@@ -396,8 +396,12 @@ class StorageService:
         )
         try:
             table_client: TableClient = self.get_table_service_client().get_table_client(table_name=table_name)
+            entities: List[Dict[str, Any]]
 
-            entities: List[Dict[str, any]] = list(table_client.query_entities(query_filter=filter_query))
+            if filter_query:
+                entities = list(table_client.query_entities(query_filter=filter_query))
+            else:
+                entities = list(table_client.list_entities())
 
             logging.info(
                 msg=f"StorageService.get_entities: Retrieved {len(entities)} entities from table '{table_name}'."
@@ -417,7 +421,7 @@ class StorageService:
             )
             raise
 
-    def delete_entity(self, table_name: str, partition_key: str, row_key: str):
+    def delete_entity(self, table_name: str, partition_key: str, row_key: str) -> None:
         """
         Deletes a specific entity from an Azure Table.
         Does not raise an error if the entity does not exist.
@@ -459,7 +463,7 @@ class StorageService:
             )
             raise
 
-    def upsert_entity(self, table_name: str, entity: Dict[str, any]):
+    def upsert_entity(self, table_name: str, entity: Dict[str, Any]) -> None:
         """
         Inserts or updates an entity in the specified Azure Table.
         Creates the table if it does not exist.
@@ -540,7 +544,7 @@ class StorageService:
             logging.error(f"StorageService.delete_table: Failed to delete table '{table_name}': {e}")
             raise
 
-    def delete_entities_batch(self, table_name: str, entities: List[Dict[str, any]]):
+    def delete_entities_batch(self, table_name: str, entities: List[Dict[str, Any]]) -> None:
         """
         Deletes a list of entities from a table in batches of 100.
 

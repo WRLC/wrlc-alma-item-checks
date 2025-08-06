@@ -2,8 +2,8 @@
 import logging
 
 from sqlalchemy.orm import Session
-from wrlc_alma_api_client import AlmaApiClient
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client import AlmaApiClient  # type: ignore
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
 from src.wrlc_alma_item_checks.config import NOTIFIER_QUEUE_NAME
 from src.wrlc_alma_item_checks.models.check import Check
@@ -37,7 +37,7 @@ class SCFNoX:
             bool: True if the event should be processed, False otherwise.
         """
         if self.item.item_data.barcode.endswith('X'):  # Check if barcode ends with 'X'
-            logging.info(f"ScfNoX: Barcode ends in X, skipping processing")
+            logging.info("ScfNoX: Barcode ends in X, skipping processing")
             return False
 
         return True
@@ -54,7 +54,7 @@ class SCFNoX:
         db: Session = SessionMaker()  # get database session
 
         check_service: CheckService = CheckService(db)  # get check service
-        check: Check = check_service.get_check_by_name(check_name)  # get check by name
+        check: Check | None = check_service.get_check_by_name(check_name)  # get check by name
 
         db.close()  # close database session
 
