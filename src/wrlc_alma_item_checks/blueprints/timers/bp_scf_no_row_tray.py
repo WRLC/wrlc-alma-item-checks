@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from wrlc_alma_api_client.models.item import Item
 
 from src.wrlc_alma_item_checks.config import (
+    NOTIFIER_CONTAINER_NAME,
     SCF_NO_ROW_TRAY_CHECK_NAME,
     SCF_NO_ROW_TRAY_PROCESSOR_QUEUE_NAME,
     SCF_NO_ROW_TRAY_RESULTS_TABLE_NAME,
@@ -51,26 +52,36 @@ def DailyScfReportTimer(dailyTimer: func.TimerRequest, out_msg: func.Out[str]) -
         logging.info(msg=f"DailyScfReportTimer: No items staged for {SCF_NO_ROW_TRAY_CHECK_NAME}. Exiting.")
         return
 
-    barcodes: list[str] = [entity['RowKey'] for entity in staged_items]
     run_id: str = str(uuid.uuid4())
 
-    # 2. Create a temporary table to store results for this run
+    # 2. Store the full list of original entities in a blob for final cleanup
+    original_entities_blob_name = f"{run_id}-original-entities.json"
+    storage_service.upload_blob_data(
+        container_name=NOTIFIER_CONTAINER_NAME,
+        blob_name=original_entities_blob_name,
+        data=staged_items
+    )
+    logging.info(f"DailyScfReportTimer: Stored original entities in blob '{original_entities_blob_name}'.")
+
+    # 3. Create a temporary table to store results for this run
     results_table_name: str = f"{SCF_NO_ROW_TRAY_RESULTS_TABLE_NAME}{run_id.replace('-', '')}"
     storage_service.create_table_if_not_exists(results_table_name)
     logging.info(f"DailyScfReportTimer: Created results table '{results_table_name}' for run_id '{run_id}'.")
 
-    # 3. Create the initial message to start the batch processing
+    # 4. Create the initial message to start the batch processing
+    barcodes_to_process: list[str] = [entity['RowKey'] for entity in staged_items]
     initial_message: dict[str, Any] = {
         "run_id": run_id,
         "results_table_name": results_table_name,
-        "all_barcodes": barcodes,
-        "processed_barcodes": []  # Start with an empty list of processed items
+        "original_entities_blob_name": original_entities_blob_name,
+        "original_entities_container_name": NOTIFIER_CONTAINER_NAME,
+        "barcodes_to_process": barcodes_to_process
     }
 
-    # 4. Send the message to the queue to be picked up by the "Worker"
+    # 5. Send the message to the queue to be picked up by the "Worker"
     out_msg.set(json.dumps(initial_message))
     logging.info(
-        f"DailyScfReportTimer: Queued processing for {len(barcodes)} items with run_id '{run_id}'."
+        f"DailyScfReportTimer: Queued processing for {len(barcodes_to_process)} items with run_id '{run_id}'."
     )
 
 
@@ -96,20 +107,22 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
         message: dict[str, Any] = json.loads(in_msg.get_body().decode())
         run_id: str = message["run_id"]
         results_table_name: str = message["results_table_name"]
-        all_barcodes: list[str] = message["all_barcodes"]
-        processed_barcodes: list[str] = message["processed_barcodes"]
+        barcodes_to_process: list[str] = message["barcodes_to_process"]
+        original_entities_blob_name: str = message["original_entities_blob_name"]
+        original_entities_container_name: str = message["original_entities_container_name"]
     except (json.JSONDecodeError, KeyError) as e:
         logging.error(f"ProcessScfNoRowTrayQueue: Error parsing queue message: {e}")
         return
 
     # 1. Determine the current batch of barcodes to process
-    start_index: int = len(processed_barcodes)
-    barcodes_to_process: list[str] = all_barcodes[start_index:start_index + 20]
-    logging.info(f"Run ID '{run_id}': Processing batch of {len(barcodes_to_process)} items.")
+    batch_size = 50  # Process 50 items per invocation
+    barcodes_for_this_batch: list[str] = barcodes_to_process[:batch_size]
+    remaining_barcodes: list[str] = barcodes_to_process[batch_size:]
+    logging.info(f"Run ID '{run_id}': Processing batch of {len(barcodes_for_this_batch)} items.")
 
     # 2. Process the current batch
     storage_service: StorageService = StorageService()
-    for barcode in barcodes_to_process:
+    for barcode in barcodes_for_this_batch:
         scf_shared: SCFShared = SCFShared(barcode=barcode)
         item_data: Union[Item, None] = scf_shared.should_process()
 
@@ -124,21 +137,20 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
                 }
                 storage_service.upsert_entity(results_table_name, result_entity)
 
-    # 3. Update the list of all processed barcodes
-    newly_processed_barcodes: list[str] = processed_barcodes + barcodes_to_process
-
-    # 4. Decide whether to continue or finish
-    if len(newly_processed_barcodes) < len(all_barcodes):
+    # 3. Decide whether to continue or finish
+    if remaining_barcodes:
         # --- More items to process, queue the next batch ---
         next_message: dict[str, Any] = {
             "run_id": run_id,
             "results_table_name": results_table_name,
-            "all_barcodes": all_barcodes,
-            "processed_barcodes": newly_processed_barcodes
+            "original_entities_blob_name": original_entities_blob_name,
+            "original_entities_container_name": original_entities_container_name,
+            "barcodes_to_process": remaining_barcodes
         }
         out_msg.set(json.dumps(next_message))
         logging.info(
-            f"Run ID '{run_id}': Queued next batch. {len(newly_processed_barcodes)}/{len(all_barcodes)} processed.")
+            f"Run ID '{run_id}': Queued next batch of {len(remaining_barcodes)} items."
+        )
     else:
         # --- FINAL BATCH: All items processed, now generate report and clean up ---
         logging.info(f"Run ID '{run_id}': Final batch complete. Generating report and cleaning up.")
@@ -155,11 +167,13 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
             report_handler.process(items_still_failing=items_still_failing)
 
         # Clean up the original staged items using the efficient batch delete
-        original_entities_to_delete: list[dict[str, str]] = [
-            {"PartitionKey": SCF_NO_ROW_TRAY_CHECK_NAME, "RowKey": bc} for bc in all_barcodes
-        ]
+        # Download the original list from the blob created by the starter function
+        original_entities_to_delete: list[dict[str, Any]] = storage_service.download_blob_as_json(
+            container_name=original_entities_container_name,
+            blob_name=original_entities_blob_name
+        )
         storage_service.delete_entities_batch(SCF_NO_ROW_TRAY_CHECK_NAME, original_entities_to_delete)
 
         # Clean up the temporary results table
-        storage_service.delete_table(results_table_name)
+        storage_service.delete_blob(original_entities_container_name, original_entities_blob_name)
         logging.info(f"Run ID '{run_id}': Cleanup complete. Process finished.")
