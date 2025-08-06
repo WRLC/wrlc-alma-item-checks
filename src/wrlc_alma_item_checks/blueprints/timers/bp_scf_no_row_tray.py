@@ -83,9 +83,10 @@ def DailyScfReportTimer(dailyTimer: func.TimerRequest, out_msg: func.Out[str]) -
     initial_message: dict[str, Any] = {
         "run_id": run_id,
         "results_table_name": results_table_name,
+        "container_name": NOTIFIER_CONTAINER_NAME,
         "original_entities_blob_name": original_entities_blob_name,
-        "original_entities_container_name": NOTIFIER_CONTAINER_NAME,
         "barcodes_to_process_blob_name": barcodes_blob_name,
+        "offset": 0  # Start at the beginning of the list
     }
 
     # 5. Send the message to the queue to be picked up by the "Worker"
@@ -115,37 +116,42 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
 
     storage_service: StorageService = StorageService()
 
+    # --- Parse message ---
     try:
         message: dict[str, Any] = json.loads(in_msg.get_body().decode())
         run_id: str = message["run_id"]
         results_table_name: str = message["results_table_name"]
+        container_name: str = message["container_name"]
         original_entities_blob_name: str = message["original_entities_blob_name"]
-        original_entities_container_name: str = message["original_entities_container_name"]
-        # If this is the first run, the barcode list is in a blob.
-        # Otherwise, it's in the message itself.
-        if "barcodes_to_process" in message:
-            barcodes_to_process: list[str] = message["barcodes_to_process"]
-        elif "barcodes_to_process_blob_name" in message:
-            barcodes_blob_name = message["barcodes_to_process_blob_name"]
-            barcodes_to_process = storage_service.download_blob_as_json(
-                container_name=original_entities_container_name, blob_name=barcodes_blob_name
-            )
-            # This blob is only needed for the first run, so delete it immediately.
-            storage_service.delete_blob(original_entities_container_name, barcodes_blob_name)
-        else:
-            raise KeyError("Queue message is missing 'barcodes_to_process' or 'barcodes_to_process_blob_name'")
-
+        barcodes_to_process_blob_name: str = message["barcodes_to_process_blob_name"]
+        offset: int = message["offset"]
     except (json.JSONDecodeError, KeyError) as e:
         logging.error(f"ProcessScfNoRowTrayQueue: Error parsing queue message: {e}")
         return
 
-    # 1. Determine the current batch of barcodes to process
-    batch_size = 50  # Process 50 items per invocation
-    barcodes_for_this_batch: list[str] = barcodes_to_process[:batch_size]
-    remaining_barcodes: list[str] = barcodes_to_process[batch_size:]
-    logging.info(f"Run ID '{run_id}': Processing batch of {len(barcodes_for_this_batch)} items.")
+    # 1. Download the full list of barcodes from the blob
+    try:
+        all_barcodes: list[str] = storage_service.download_blob_as_json(
+            container_name=container_name, blob_name=barcodes_to_process_blob_name
+        )
+    except Exception as e:
+        logging.error(
+            f"Run ID '{run_id}': Failed to download barcode list from blob '{barcodes_to_process_blob_name}'. "
+            f"Aborting. Error: {e}"
+        )
+        return
 
-    # 2. Process the current batch
+    # 2. Determine the current batch of barcodes to process using the offset
+    batch_size = 50  # Process 50 items per invocation
+    barcodes_for_this_batch: list[str] = all_barcodes[offset:offset + batch_size]
+    new_offset = offset + len(barcodes_for_this_batch)
+
+    logging.info(
+        f"Run ID '{run_id}': Processing batch of {len(barcodes_for_this_batch)} items. "
+        f"Offset: {offset}, Total: {len(all_barcodes)}."
+    )
+
+    # 3. Process the current batch
     for barcode in barcodes_for_this_batch:
         scf_shared: SCFShared = SCFShared(barcode=barcode)
         item_data: Union[Item, None] = scf_shared.should_process()
@@ -161,28 +167,26 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
                 }
                 storage_service.upsert_entity(results_table_name, result_entity)
 
-    # 3. Decide whether to continue or finish
-    if remaining_barcodes:
+    # 4. Decide whether to continue or finish
+    if new_offset < len(all_barcodes):
         # --- More items to process, queue the next batch ---
         next_message: dict[str, Any] = {
             "run_id": run_id,
             "results_table_name": results_table_name,
+            "container_name": container_name,
             "original_entities_blob_name": original_entities_blob_name,
-            "original_entities_container_name": original_entities_container_name,
-            "barcodes_to_process": remaining_barcodes
+            "barcodes_to_process_blob_name": barcodes_to_process_blob_name,
+            "offset": new_offset
         }
         out_msg.set(json.dumps(next_message))
-        logging.info(
-            f"Run ID '{run_id}': Queued next batch of {len(remaining_barcodes)} items."
-        )
+        logging.info(f"Run ID '{run_id}': Queued next batch. New offset: {new_offset}.")
     else:
         # --- FINAL BATCH: All items processed, now generate report and clean up ---
         logging.info(f"Run ID '{run_id}': Final batch complete. Generating report and cleaning up.")
 
         # Get all failing items from the results table
         failing_entities: list[dict[str, Any]] = storage_service.get_entities(
-            results_table_name,
-            filter_query=f"PartitionKey eq '{run_id}'"
+            results_table_name, filter_query=f"PartitionKey eq '{run_id}'"
         )
         items_still_failing: list[Item] = [Item.model_validate_json(entity['ItemData']) for entity in failing_entities]
 
@@ -192,12 +196,15 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
 
         # Clean up the original staged items using the efficient batch delete
         # Download the original list from the blob created by the starter function
-        original_entities_to_delete: list[dict[str, Any]] = storage_service.download_blob_as_json(
-            container_name=original_entities_container_name,
-            blob_name=original_entities_blob_name
+        original_entities: list[dict[str, Any]] = storage_service.download_blob_as_json(
+            container_name=container_name, blob_name=original_entities_blob_name
         )
-        storage_service.delete_entities_batch(SCF_NO_ROW_TRAY_CHECK_NAME, original_entities_to_delete)
+        storage_service.delete_entities_batch(SCF_NO_ROW_TRAY_CHECK_NAME, original_entities)
 
         # Clean up the temporary results table
-        storage_service.delete_blob(original_entities_container_name, original_entities_blob_name)
+        storage_service.delete_table(results_table_name)
+
+        # Clean up the temporary blobs
+        storage_service.delete_blob(container_name, original_entities_blob_name)
+        storage_service.delete_blob(container_name, barcodes_to_process_blob_name)
         logging.info(f"Run ID '{run_id}': Cleanup complete. Process finished.")
