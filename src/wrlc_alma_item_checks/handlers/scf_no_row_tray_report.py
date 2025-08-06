@@ -2,9 +2,13 @@
 import logging
 
 from sqlalchemy.orm import Session
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
-from src.wrlc_alma_item_checks.config import SCF_NO_ROW_TRAY_CHECK_NAME, NOTIFIER_QUEUE_NAME
+from src.wrlc_alma_item_checks.config import (
+    NOTIFIER_CONTAINER_NAME,
+    NOTIFIER_QUEUE_NAME,
+    SCF_NO_ROW_TRAY_CHECK_NAME
+)
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 from src.wrlc_alma_item_checks.services.check_service import CheckService
@@ -29,7 +33,7 @@ class ScfNoRowTrayReport:
         db: Session = SessionMaker()  # get database session
 
         check_service: CheckService = CheckService(db)  # get check service
-        check: Check = check_service.get_check_by_name(SCF_NO_ROW_TRAY_CHECK_NAME)  # get check by name
+        check: Check | None = check_service.get_check_by_name(SCF_NO_ROW_TRAY_CHECK_NAME)  # get check by name
 
         db.close()  # close database session
 
@@ -42,14 +46,25 @@ class ScfNoRowTrayReport:
 
         storage_service: StorageService = StorageService()  # Get storage service
 
-        storage_service.send_queue_message(  # Send message to notifier queue
-            NOTIFIER_QUEUE_NAME,
-            {
-                "job_id": job_id,
-                "check_id": check.id,
-                "combined_data_container": None,
-                "email_body_addendum": html_table
-            }
+        # Save the large HTML report to a blob to avoid exceeding queue message size limits
+        addendum_blob_name = f"{job_id}-addendum.html"
+        storage_service.upload_blob_data(
+            container_name=NOTIFIER_CONTAINER_NAME,
+            blob_name=addendum_blob_name,
+            data=html_table
+        )
+
+        # Send a small message to the notifier queue with a pointer to the blob
+        message_payload = {
+            "job_id": job_id,
+            "check_id": check.id,
+            "email_body_addendum_blob_name": addendum_blob_name,
+            "email_body_addendum_container_name": NOTIFIER_CONTAINER_NAME
+        }
+
+        storage_service.send_queue_message(
+            queue_name=NOTIFIER_QUEUE_NAME,
+            message_content=message_payload
         )
 
     def _generate_report_html(self, check: Check, items: list[Item]) -> str:

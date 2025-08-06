@@ -21,7 +21,9 @@ dependencies = [
     "pymysql (>=1.1.1,<2.0.0)",
     "fastapi (>=0.116.1,<0.117.0)",
     "wrlc-alma-api-client (>=0.1.0,<0.2.0)",
-    "azure-data-tables (>=12.7.0,<13.0.0)"
+    "azure-data-tables (>=12.7.0,<13.0.0)",
+    "pandas-stubs (>=2.3.0.250703,<3.0.0.0)",
+    "types-requests (>=2.32.4.20250611,<3.0.0.0)"
 ]
 
 [tool.poetry]
@@ -31,6 +33,18 @@ package-mode = false
 name = "wrlc-python"
 url = "https://pkgs.dev.azure.com/WRLCdev/Python/_packaging/wrlc-python/pypi/simple/"
 priority = "primary"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.12.7"
+mypy = "^1.17.1"
+bandit = "^1.8.6"
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+explicit_package_bases = true
+namespace_packages = true
 
 [build-system]
 requires = ["poetry-core"]

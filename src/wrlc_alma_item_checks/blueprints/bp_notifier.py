@@ -8,6 +8,7 @@ from src.wrlc_alma_item_checks.config import NOTIFIER_QUEUE_NAME, TEMPLATE_FILE_
 from src.wrlc_alma_item_checks.repositories.check_repo import CheckRepository
 from src.wrlc_alma_item_checks.repositories.database import SessionMaker
 from src.wrlc_alma_item_checks.repositories.user_repo import UserRepository
+from src.wrlc_alma_item_checks.services.storage_service import StorageService
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.models.user import User
 from src.wrlc_alma_item_checks.services.notifier_service import NotifierService
@@ -28,8 +29,9 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
     {
         "job_id": "123456",
         "check_id": 123,
-        "combined_data_blob": "...",
-        "email_body_addendum": "..."
+        "combined_data_blob": "...", # Optional: for reports generated from a blob of JSON
+        "email_body_addendum": "...", # Optional: for small, inline text
+        "email_body_addendum_blob_name": "..." # Optional: for large reports stored in a blob
     }
     """
     try:  # Get the job ID and check ID from the message
@@ -46,7 +48,7 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
         # Use a 'with' statement for robust session management
         with SessionMaker() as db:
             check_repo: CheckRepository = CheckRepository(db)
-            check: Check = check_repo.get_check_by_id(check_id)
+            check: Check | None = check_repo.get_check_by_id(check_id)
 
             user_repo: UserRepository = UserRepository(db)
             users: list[User] = user_repo.get_users_by_check_id(check_id)
@@ -64,20 +66,43 @@ def ItemCheckNotifier(msg: func.QueueMessage) -> None:
 
     notifier_service: NotifierService = NotifierService()
 
+    if not check:
+        logging.error(f"Job {job_id}: No check is subscribed to notifications. Exiting.")
+        return
+
     html_table: str | None = notifier_service.create_html_table(
         msg=msg,
         job_id=job_id,
         check=check
     )
-    # Get the addendum if it exists, otherwise it remains None
-    body_addendum: str | None = message_data.get("email_body_addendum")
+    # Get the addendum, prioritizing the blob pointer if it exists
+    body_addendum: str | None
+    addendum_blob_name = message_data.get("email_body_addendum_blob_name")
+    addendum_container_name = message_data.get("email_body_addendum_container_name")
+
+    if addendum_blob_name and addendum_container_name:
+        try:
+            storage_service = StorageService()
+            body_addendum = storage_service.download_blob_as_text(
+                container_name=addendum_container_name,
+                blob_name=addendum_blob_name
+            )
+            # Clean up the temporary blob now that we have its content
+            storage_service.delete_blob(addendum_container_name, addendum_blob_name)
+        except Exception as e:
+            logging.error(f"Job {job_id}: Failed to download or delete addendum blob '{addendum_blob_name}': {e}")
+            # Fallback to an error message in the email body
+            body_addendum = "<i>[Error: Could not load report content from storage.]</i>"
+    else:
+        # Fallback to the old method for backward compatibility or other use cases
+        body_addendum = message_data.get("email_body_addendum")
 
     if not html_table and not body_addendum:
         logging.info(f"Job {job_id}: No data table or addendum to send. Skipping email.")
         return
 
     # Corrected keyword argument from 'template' to 'template_name'
-    html_content_body: str = notifier_service.render_email_body(
+    html_content_body: str | None = notifier_service.render_email_body(
         template_name=TEMPLATE_FILE_NAME,
         check=check,
         body_addendum=body_addendum,

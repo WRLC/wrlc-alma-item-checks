@@ -1,6 +1,6 @@
 """Repository functions for check jobs"""
 import logging
-from typing import List, Any
+from typing import List
 
 from sqlalchemy import Select
 from sqlalchemy.exc import NoResultFound, SQLAlchemyError
@@ -24,7 +24,7 @@ class CheckRepository:
         Returns:
             list[SQLAlchemyCheckModel]: List of check objects
         """
-        stmt: Any = Select(SQLAlchemyCheckModel).limit(limit).offset(skip)
+        stmt: Select = Select(SQLAlchemyCheckModel).limit(limit).offset(skip)
         try:
             return list(self.session.execute(stmt).scalars().all())
         except SQLAlchemyError as e:
@@ -44,7 +44,7 @@ class CheckRepository:
         Returns:
             Check: The check object.
         """
-        stmt = (
+        stmt: Select = (
             Select(SQLAlchemyCheckModel)
             .where(SQLAlchemyCheckModel.id == check_id)
         )
@@ -71,7 +71,7 @@ class CheckRepository:
         Returns:
             Check: The check object.
         """
-        stmt = (
+        stmt: Select = (
             Select(SQLAlchemyCheckModel)
             .where(SQLAlchemyCheckModel.name == check_name)
         )

@@ -10,7 +10,9 @@ from jinja2 import Template, TemplateNotFound, Environment, FileSystemLoader, se
 import pandas as pd
 
 from src.wrlc_alma_item_checks.config import (
-    NOTIFIER_CONTAINER_NAME, ACS_STORAGE_CONNECTION_STRING, ACS_SENDER_CONTAINER_NAME, DISABLE_EMAIL
+    ACS_SENDER_CONTAINER_NAME,
+    ACS_STORAGE_CONNECTION_STRING,
+    DISABLE_EMAIL
 )
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.models.email import EmailMessage
@@ -21,7 +23,7 @@ from .storage_service import StorageService
 class NotifierService:
     """Service for preparting and queuing notifications."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Initialize the Jinja2 environment once in the constructor for efficiency
         self.jinja_env: Environment | None = None
         try:
@@ -40,7 +42,11 @@ class NotifierService:
             # The service can continue, but render_email_body will fail gracefully.
 
     def render_email_body(
-            self, template_name: str, check: Check, body_addendum: str, html_table: str, job_id: str
+            self,
+            template_name: str,
+            check: Check, job_id: str,
+            body_addendum: str | None = None,
+            html_table: str | None = None
     ) -> str | None:
         """
         Render the email body using the provided template and context.
@@ -129,10 +135,18 @@ class NotifierService:
         """
         html_table: str | None = None
 
-        if msg.get_json().get("combined_data_blob"):
-            combined_data_blob = msg.get_json().get("combined_data_blob")
+        message_json = msg.get_json()
 
-            combined_data_container = NOTIFIER_CONTAINER_NAME
+        if message_json.get("combined_data_blob"):
+            combined_data_blob = message_json.get("combined_data_blob")
+            combined_data_container = message_json.get("combined_data_container")
+
+            if not combined_data_container:
+                logging.error(
+                    f"Job {job_id}: Message has 'combined_data_blob' but is missing 'combined_data_container'. "
+                    f"Cannot process."
+                )
+                return None
 
             storage_service: StorageService = StorageService()
 
@@ -141,8 +155,10 @@ class NotifierService:
                     container_name=combined_data_container,
                     blob_name=combined_data_blob,
                 )
-            except Exception as val_err:
-                logging.error(f"EJob {job_id}: Error downloading blob: {val_err}")
+                # Clean up the blob after successfully downloading its content
+                storage_service.delete_blob(combined_data_container, combined_data_blob)
+            except Exception as val_err:  # Catches download or delete errors
+                logging.error(f"Job {job_id}: Error downloading or deleting blob '{combined_data_blob}': {val_err}")
                 return None
 
             # Convert JSON to HTML Table
@@ -172,7 +188,7 @@ class NotifierService:
                         logging.debug(f"Job {job_id}: Converted DataFrame to HTML string.")
                     else:
                         html_table = (
-                            f"<i>Report generated, but contained no displayable data.</i><br>"
+                            "<i>Report generated, but contained no displayable data.</i><br>"
                         )
                 else:
                     logging.warning(f"Job {job_id}: No JSON data string available for conversion.")

@@ -2,7 +2,7 @@
 import logging
 import re
 
-from wrlc_alma_api_client.models.item import Item
+from wrlc_alma_api_client.models.item import Item  # type: ignore
 
 from src.wrlc_alma_item_checks.config import EXCLUDED_NOTES, SKIP_LOCATIONS, SCF_NO_ROW_TRAY_CHECK_NAME
 from src.wrlc_alma_item_checks.services.storage_service import StorageService

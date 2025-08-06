@@ -27,7 +27,7 @@ class NotificationRepository:
             list[SQLAlchemyNotification]: A list of all notifications.
 
         """
-        stmt = Select(SQLAlchemyNotification).limit(limit).offset(skip)
+        stmt: Select = Select(SQLAlchemyNotification).limit(limit).offset(skip)
         try:
             return list(self.session.execute(stmt).scalars().all())
         except SQLAlchemyError as e:
@@ -50,7 +50,7 @@ class NotificationRepository:
             SQLAlchemyNotification: The retrieved notification.
 
         """
-        stmt = Select(SQLAlchemyNotification).where(SQLAlchemyNotification.id == notification_id)
+        stmt: Select = Select(SQLAlchemyNotification).where(SQLAlchemyNotification.id == notification_id)
         try:
             return self.session.execute(stmt).scalars().one()
         except SQLAlchemyError as e:
