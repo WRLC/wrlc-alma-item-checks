@@ -70,12 +70,22 @@ def DailyScfReportTimer(dailyTimer: func.TimerRequest, out_msg: func.Out[str]) -
 
     # 4. Create the initial message to start the batch processing
     barcodes_to_process: list[str] = [entity['RowKey'] for entity in staged_items]
+
+    # Store the barcodes to process in their own blob to keep the initial message small
+    barcodes_blob_name = f"{run_id}-barcodes-to-process.json"
+    storage_service.upload_blob_data(
+        container_name=NOTIFIER_CONTAINER_NAME,
+        blob_name=barcodes_blob_name,
+        data=barcodes_to_process
+    )
+    logging.info(f"DailyScfReportTimer: Stored barcodes to process in blob '{barcodes_blob_name}'.")
+
     initial_message: dict[str, Any] = {
         "run_id": run_id,
         "results_table_name": results_table_name,
         "original_entities_blob_name": original_entities_blob_name,
         "original_entities_container_name": NOTIFIER_CONTAINER_NAME,
-        "barcodes_to_process": barcodes_to_process
+        "barcodes_to_process_blob_name": barcodes_blob_name,
     }
 
     # 5. Send the message to the queue to be picked up by the "Worker"
@@ -103,13 +113,28 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
     """
     logging.info("ProcessScfNoRowTrayQueue: Queue trigger function processed a message.")
 
+    storage_service: StorageService = StorageService()
+
     try:
         message: dict[str, Any] = json.loads(in_msg.get_body().decode())
         run_id: str = message["run_id"]
         results_table_name: str = message["results_table_name"]
-        barcodes_to_process: list[str] = message["barcodes_to_process"]
         original_entities_blob_name: str = message["original_entities_blob_name"]
         original_entities_container_name: str = message["original_entities_container_name"]
+        # If this is the first run, the barcode list is in a blob.
+        # Otherwise, it's in the message itself.
+        if "barcodes_to_process" in message:
+            barcodes_to_process: list[str] = message["barcodes_to_process"]
+        elif "barcodes_to_process_blob_name" in message:
+            barcodes_blob_name = message["barcodes_to_process_blob_name"]
+            barcodes_to_process = storage_service.download_blob_as_json(
+                container_name=original_entities_container_name, blob_name=barcodes_blob_name
+            )
+            # This blob is only needed for the first run, so delete it immediately.
+            storage_service.delete_blob(original_entities_container_name, barcodes_blob_name)
+        else:
+            raise KeyError("Queue message is missing 'barcodes_to_process' or 'barcodes_to_process_blob_name'")
+
     except (json.JSONDecodeError, KeyError) as e:
         logging.error(f"ProcessScfNoRowTrayQueue: Error parsing queue message: {e}")
         return
@@ -121,7 +146,6 @@ def ProcessScfNoRowTrayQueue(in_msg: func.QueueMessage, out_msg: func.Out[str]) 
     logging.info(f"Run ID '{run_id}': Processing batch of {len(barcodes_for_this_batch)} items.")
 
     # 2. Process the current batch
-    storage_service: StorageService = StorageService()
     for barcode in barcodes_for_this_batch:
         scf_shared: SCFShared = SCFShared(barcode=barcode)
         item_data: Union[Item, None] = scf_shared.should_process()
