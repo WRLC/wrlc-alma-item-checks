@@ -2,7 +2,6 @@
 import io
 import logging
 import pathlib
-import uuid
 
 import azure.functions as func
 from azure.storage.blob import BlobClient
@@ -16,7 +15,7 @@ from src.wrlc_alma_item_checks.config import (
 )
 from src.wrlc_alma_item_checks.models.check import Check
 from src.wrlc_alma_item_checks.models.email import EmailMessage
-from .storage_service import StorageService
+from src.wrlc_alma_item_checks.services.storage_service import StorageService
 
 
 # noinspection PyMethodMayBeStatic
@@ -103,7 +102,7 @@ class NotifierService:
             raise ValueError("ACS sender service is not fully configured in application settings.")
 
         try:
-            blob_name = f"{job_id}-{uuid.uuid4()}.json"
+            blob_name = f"{job_id}.json"
             email_json_content = email_message.model_dump_json()
 
             logging.info(f"Job {job_id}: Uploading email content to blob '{ACS_SENDER_CONTAINER_NAME}/{blob_name}'.")
@@ -179,9 +178,7 @@ class NotifierService:
                     record_count = len(df)
                     logging.debug(f"Job {job_id}: Read {record_count} rows into DataFrame.")
                     if not df.empty:
-                        html_table = df.to_html(
-                            index=False, border=1, escape=True, na_rep=''
-                        ).replace(
+                        html_table = df.to_html(index=False, border=1, na_rep='').replace(
                             'border="1"',
                             'border="1" style="border-collapse: collapse; border: 1px solid black;"'
                         )
