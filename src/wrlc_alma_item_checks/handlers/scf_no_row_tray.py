@@ -31,7 +31,8 @@ class SCFNoRowTray:
             bool: True if the item should be processed, False otherwise
         """
         if self.no_row_tray_data() or self.wrong_row_tray_data():  # check if row/tray data present and in right format
-            if self.item.item_data.internal_note_1 in EXCLUDED_NOTES:  # check if internal note 1 is an excluded value
+            # Check if internal note 1 is in the list of excluded notes
+            if self.item.item_data.internal_note_1.lower().strip() in (item.lower().strip() for item in EXCLUDED_NOTES):
                 logging.info(
                     msg=f"SCFNoRowTray.should_process:Item {self.item.item_data.barcode} failed "
                         f"{SCF_NO_ROW_TRAY_CHECK_NAME} check. Staging for daily report."
@@ -109,7 +110,7 @@ class SCFNoRowTray:
 
             field_value: str | None = field.get('value')
 
-            if field_value is not None:  # only process if the field has value set
+            if field_value is not None and field_value.strip() != '':  # only process if the field has value set
 
                 if any(loc in field_value for loc in SKIP_LOCATIONS):  # check if in skipped location
                     logging.info(
