@@ -73,10 +73,15 @@ def ScfWebhook(req: func.HttpRequest) -> func.HttpResponse:
         scf_no_x: SCFNoX = SCFNoX(item_data)  # Create SCFNoX instance from item
         scf_no_x.should_process()  # Check if SCFNoX should be processed
 
+        if scf_no_x.should_process():  # if item should be processed, process it
+            logging.warning(f"Barcode {item_data.barcode} does not have an X in it. Processing.")
+            scf_no_x.process()
+
         # ----- Incorrect or No Row/Tray information ----- #
         scf_no_row_tray: SCFNoRowTray = SCFNoRowTray(item_data)  # Create SCFNoRowTray instance from item
 
         if scf_no_row_tray.should_process():  # if item should be re-processed, stage it for daily report
+            logging.warning(f"Barcode {item_data.barcode} has incorrect row/tray info. Staging for re-processing.")
             scf_no_row_tray.stage()
 
         # ----- Withdrawn Item ----- #
